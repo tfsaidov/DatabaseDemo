@@ -144,11 +144,13 @@ final class ArticleTableViewCell: UITableViewCell {
         } completion: { _ in
             guard var newViewModel = self.viewModel else { return }
             
-            self.favoriteButton.transform = .identity
-            
-            newViewModel.isFavorite.toggle()
-            self.viewModel = newViewModel
-            self.delegate?.wasLikedArticle(with: newViewModel.url)
+            UIView.animate(withDuration: 0.2) {
+                self.favoriteButton.transform = .identity
+            } completion: { _ in
+                newViewModel.isFavorite.toggle()
+                self.viewModel = newViewModel
+                self.delegate?.wasLikedArticle(with: newViewModel.url)
+            }
         }
     }
 }
