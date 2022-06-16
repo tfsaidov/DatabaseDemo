@@ -48,9 +48,11 @@ final class NewsViewController: UIViewController {
     private var state: State = .loading
     
     private let dataType: SceneDelegate.DataType
+    private let databaseCoordinator: DatabaseCoordinatable
     
-    init(dataType: SceneDelegate.DataType) {
+    init(dataType: SceneDelegate.DataType, databaseCoordinator: DatabaseCoordinatable) {
         self.dataType = dataType
+        self.databaseCoordinator = databaseCoordinator
         super.init(nibName: nil, bundle: nil)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(removeArticleFromFavorites(_:)),
@@ -114,6 +116,12 @@ final class NewsViewController: UIViewController {
     }
     
     private func obtainData() {
+        let dispatchGroup = DispatchGroup()
+        
+        var obtainedError: NetworkError?
+        var obtainedArticles: [News.Article] = []
+        var obtainedArticleRealmModels: [ArticleRealmModel] = []
+    
         let completion: (Result<Data, NetworkError>) -> Void = { [weak self] result in
             guard let self = self else { return }
             
@@ -123,32 +131,66 @@ final class NewsViewController: UIViewController {
                     let news = try self.parse(News.self, from: data)
                     
                     guard let articles = self.filterData(news.articles) else {
-                        self.stopAnimating()
-                        self.state = .error(.parseError(reason: "Could't filter received data"))
+                        obtainedError = .parseError(reason: "Could't filter received data")
                         return
                     }
                     
-                    self.stopAnimating()
-                    self.state = .loaded(data: articles)
-                    self.tableView.reloadData()
+                    obtainedArticles = articles
                 } catch let error {
-                    self.stopAnimating()
-                    
                     if let error = error as? NetworkError {
-                        self.state = .error(error)
+                        obtainedError = error
                     } else {
-                        self.state = .error(.unknownError)
+                        obtainedError = .unknownError
                     }
                 }
             case .failure(let error):
-                self.stopAnimating()
-                self.state = .error(error)
+                obtainedError = error
             }
+            dispatchGroup.leave()
         }
         
+        dispatchGroup.enter()
         self.dataType == .request
         ? self.fetchNews(completion: completion)
         : self.fetchMockData(completion: completion)
+        
+        dispatchGroup.enter()
+        self.databaseCoordinator.fetchAll(ArticleRealmModel.self) { result in
+            switch result {
+            case .success(let articleRealmModels):
+                obtainedArticleRealmModels = articleRealmModels
+            case .failure:
+                break
+            }
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            guard obtainedError == nil else {
+                self.stopAnimating()
+                self.state = .error(obtainedError ?? .default)
+                return
+            }
+            
+            guard !obtainedArticles.isEmpty else {
+                self.stopAnimating()
+                self.state = .loaded(data: obtainedArticles)
+                self.tableView.reloadData()
+                return
+            }
+            
+            for (index, article) in obtainedArticles.enumerated() {
+                var favoriteArticle = article
+                guard let articleRealmModel = obtainedArticleRealmModels.first(where: { $0.url == favoriteArticle.url }) else { continue }
+                
+                favoriteArticle.isFavorite = articleRealmModel.isFavorite
+                obtainedArticles[index] = favoriteArticle
+            }
+            
+            self.stopAnimating()
+            self.state = .loaded(data: obtainedArticles)
+            self.tableView.reloadData()
+        }
     }
     
     private func fetchNews(completion: @escaping (Result<Data, NetworkError>) -> Void) {
@@ -240,6 +282,87 @@ final class NewsViewController: UIViewController {
         self.activityIndicator.stopAnimating()
     }
     
+    private func saveArticleInDatabase(_ filterArticle: News.Article,
+                                       index: Int,
+                                       using data:[News.Article]) {
+        self.databaseCoordinator.create(ArticleRealmModel.self, keyedValues: filterArticle.keyedValues) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let article):
+//                    print("🍋 \(article.title) \(article.isFavorite)")
+                var newData = data
+                newData[index] = filterArticle
+                self.state = .loaded(data: newData)
+                
+                let userInfo = ["article": filterArticle]
+                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+            case .failure(let error):
+//                    print("🍋 \(error)")
+                let alertController = UIAlertController(title: "Сouldn't add article to favorites section", message: "Please try again later", preferredStyle: .alert)
+                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                    self.saveArticleInDatabase(filterArticle,
+                                               index: index,
+                                               using: data)
+                }
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                    guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
+                    
+                    let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
+                                                                   description: filterArticle.description,
+                                                                   publishedAt: filterArticle.publishedAt,
+                                                                   url: filterArticle.url,
+                                                                   isFavorite: filterArticle.isFavorite)
+                    cell.change(with: viewModel)
+                }
+                
+                alertController.addAction(repeatAction)
+                alertController.addAction(cancelAction)
+                self.present(alertController, animated: true)
+            }
+        }
+    }
+    
+    private func removeArticleFromDatabase(_ filterArticle: News.Article,
+                                           index: Int,
+                                           using data:[News.Article]) {
+        let predicate = NSPredicate(format: "url == %@", filterArticle.url)
+        self.databaseCoordinator.delete(ArticleRealmModel.self, predicate: predicate) { result in
+            switch result {
+            case .success(let articles):
+//                print("🍊 \(articles)")
+                var newData = data
+                newData[index] = filterArticle
+                self.state = .loaded(data: newData)
+                
+                let userInfo = ["article": filterArticle]
+                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+            case .failure(let error):
+//                print("🍊 \(error)")
+                let alertController = UIAlertController(title: "Сouldn't remove article from favorites section", message: "Please try again later", preferredStyle: .alert)
+                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                    self.removeArticleFromDatabase(filterArticle,
+                                                   index: index,
+                                                   using: data)
+                }
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                    guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
+                    
+                    let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
+                                                                   description: filterArticle.description,
+                                                                   publishedAt: filterArticle.publishedAt,
+                                                                   url: filterArticle.url,
+                                                                   isFavorite: filterArticle.isFavorite)
+                    cell.change(with: viewModel)
+                }
+                
+                alertController.addAction(repeatAction)
+                alertController.addAction(cancelAction)
+                self.present(alertController, animated: true)
+            }
+        }
+    }
+    
     @objc private func removeArticleFromFavorites(_ notification: NSNotification) {
         guard self.isViewLoaded else { return }
         
@@ -259,6 +382,7 @@ final class NewsViewController: UIViewController {
                 self.state = .loaded(data: newData)
                 
                 guard let cell = tableView.cellForRow(at: IndexPath(row: detectedArticleIndex, section: 0)) as? ArticleTableViewCell else { return }
+                
                 let viewModel = ArticleTableViewCell.ViewModel(title: detectedArticle.title,
                                                                description: detectedArticle.description,
                                                                publishedAt: detectedArticle.publishedAt,
@@ -312,19 +436,20 @@ extension NewsViewController: ArticleTableViewCellDelefate {
         case .loading, .error:
             break
         case .loaded(let data):
-            var newData = data
-            
             guard
-                var filterArticle = newData.first(where: { $0.url == url }),
-                let index = newData.firstIndex(where: { $0.url == url })
+                var filterArticle = data.first(where: { $0.url == url }),
+                let index = data.firstIndex(where: { $0.url == url })
             else { return }
             
             filterArticle.isFavorite.toggle()
-            newData[index] = filterArticle
-            self.state = .loaded(data: newData)
             
-            let userInfo = ["article": filterArticle]
-            NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+            filterArticle.isFavorite
+            ? self.saveArticleInDatabase(filterArticle,
+                                         index: index,
+                                         using: data)
+            : self.removeArticleFromDatabase(filterArticle,
+                                             index: index,
+                                             using: data)
         }
     }
 }

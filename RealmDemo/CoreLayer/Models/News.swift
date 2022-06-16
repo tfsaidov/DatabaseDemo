@@ -34,6 +34,19 @@ struct News: Decodable {
             
             return Self.dateFormatter.string(from: publishedAtDate)
         }
+        
+        var keyedValues: [String: Any] {
+            return [
+                "author": self.author ?? "",
+                "imageURL": self.imageURL ?? "",
+                "content": self.content ?? "",
+                "title": self.title,
+                "specification": self.description ?? "",
+                "url": self.url,
+                "publishedAt": self.publishedAt,
+                "isFavorite": self.isFavorite
+            ]
+        }
 
         struct Source: Decodable {
             let id: String?
@@ -56,6 +69,17 @@ struct News: Decodable {
             self.url = try container.decode(String.self, forKey: .url)
             self.publishedAt = try container.decode(String.self, forKey: .publishedAt)
             self.isFavorite = false
+        }
+        
+        init(articleRealmModel: ArticleRealmModel) {
+            self.author = articleRealmModel.author
+            self.imageURL = articleRealmModel.imageURL
+            self.content = articleRealmModel.content
+            self.title = articleRealmModel.title
+            self.description = articleRealmModel.specification
+            self.url = articleRealmModel.url
+            self.publishedAt = articleRealmModel.publishedAt
+            self.isFavorite = articleRealmModel.isFavorite
         }
         
         static func ==(lhs: Article, rhs: Article) -> Bool {

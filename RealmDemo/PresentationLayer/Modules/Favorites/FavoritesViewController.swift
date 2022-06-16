@@ -12,7 +12,6 @@ class FavoritesViewController: UIViewController {
     private enum State {
         case empty
         case hasModel(model: [News.Article])
-        case mock(_ model: [ArticleTableViewCell.ViewModel])
     }
 
     private lazy var tableView: UITableView = {
@@ -31,8 +30,11 @@ class FavoritesViewController: UIViewController {
     
     private var state: State = .empty
     
-    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
-        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+    private let databaseCoordinator: DatabaseCoordinatable
+    
+    init(databaseCoordinator: DatabaseCoordinatable) {
+        self.databaseCoordinator = databaseCoordinator
+        super.init(nibName: nil, bundle: nil)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(wasLikedArticle(_:)),
                                                name: .wasLikedArticle,
@@ -51,6 +53,7 @@ class FavoritesViewController: UIViewController {
         super.viewDidLoad()
         self.setupNavigationBar()
         self.setupView()
+        self.fetchArticlesFromDatabase()
     }
     
     private func setupNavigationBar() {
@@ -71,6 +74,60 @@ class FavoritesViewController: UIViewController {
         NSLayoutConstraint.activate([
             topConstraint, leftConstraint, rightConstraint, bottomConstraint
         ])
+    }
+    
+    private func fetchArticlesFromDatabase() {
+        self.databaseCoordinator.fetchAll(ArticleRealmModel.self) { result in
+            switch result {
+            case .success(let articleRealmModels):
+//                print("🍇 \(dump(articleRealmModels))")
+                let articles = articleRealmModels.map { News.Article(articleRealmModel: $0) }
+                self.state = articles.isEmpty ? .empty : .hasModel(model: articles)
+                self.tableView.reloadData()
+            case .failure(let error):
+//                print("🍇 \(error)")
+                self.state = .empty
+            }
+        }
+    }
+    
+    private func removeArticleFromDatabase(_ deletedArticle: News.Article,
+                                           deletedIndexPath: IndexPath,
+                                           using model: [News.Article],
+                                           completion: @escaping (Bool) -> Void) {
+        let predicate = NSPredicate(format: "url == %@", deletedArticle.url)
+        self.databaseCoordinator.delete(ArticleRealmModel.self, predicate: predicate) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success:
+                let userInfo = ["deletedFromFavoritesArticle": deletedArticle]
+                NotificationCenter.default.post(name: .didRemoveArticleFromFavorites, object: nil, userInfo: userInfo)
+                completion(true)
+            case .failure(let error):
+                print("🍓 \(error)")
+                let alertController = UIAlertController(title: "Сouldn't remove article from favorites section", message: "Please try again later", preferredStyle: .alert)
+                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                    self.removeArticleFromDatabase(deletedArticle,
+                                                   deletedIndexPath: deletedIndexPath,
+                                                   using: model,
+                                                   completion: completion)
+                }
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                    self.state = .hasModel(model: model)
+                    
+                    self.tableView.beginUpdates()
+                    self.tableView.insertRows(at: [deletedIndexPath], with: .fade)
+                    self.tableView.endUpdates()
+                    
+                    completion(false)
+                }
+                
+                alertController.addAction(repeatAction)
+                alertController.addAction(cancelAction)
+                self.present(alertController, animated: true)
+            }
+        }
     }
 
     @objc private func wasLikedArticle(_ notification: NSNotification) {
@@ -105,40 +162,6 @@ class FavoritesViewController: UIViewController {
                     self.tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
                     self.tableView.endUpdates()
                 }
-            case .mock:
-                break
-            }
-        } else if let article = notification.userInfo?["article"] as? ArticleTableViewCell.ViewModel {
-            switch self.state {
-            case .empty:
-                if article.isFavorite {
-                    let model = [article]
-                    self.state = .mock(model)
-                    self.tableView.beginUpdates()
-                    self.tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .fade)
-                    self.tableView.endUpdates()
-                }
-            case .hasModel:
-                break
-            case .mock(let model):
-                var newModel = model
-                
-                if article.isFavorite {
-                    newModel.append(article)
-                    self.state = .mock(newModel)
-                    let lastIndex = newModel.count - 1
-                    self.tableView.beginUpdates()
-                    self.tableView.insertRows(at: [IndexPath(row: lastIndex, section: 0)], with: .fade)
-                    self.tableView.endUpdates()
-                } else {
-                    guard let index = model.firstIndex(where: { $0.url == article.url }) else { return }
-                    
-                    newModel.remove(at: index)
-                    self.state = .mock(newModel)
-                    self.tableView.beginUpdates()
-                    self.tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
-                    self.tableView.endUpdates()
-                }
             }
         }
     }
@@ -151,8 +174,6 @@ extension FavoritesViewController: UITableViewDataSource, UITableViewDelegate {
         case .empty:
             return 0
         case .hasModel(let model):
-            return model.count
-        case .mock(let model):
             return model.count
         }
     }
@@ -174,15 +195,6 @@ extension FavoritesViewController: UITableViewDataSource, UITableViewDelegate {
                                                                publishedAt: article.publishedAtString ?? .empty,
                                                                url: article.url,
                                                                isFavorite: article.isFavorite)
-            cell.setup(with: model)
-            return cell
-        case .mock(let model):
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "ArticleCell", for: indexPath) as? FavoriteArticleTableViewCell else {
-                let cell = tableView.dequeueReusableCell(withIdentifier: "DefaultCell", for: indexPath)
-                return cell
-            }
-            
-            let model = FavoriteArticleTableViewCell.ViewModel(model: model[indexPath.row])
             cell.setup(with: model)
             return cell
         }
@@ -218,28 +230,10 @@ extension FavoritesViewController: UITableViewDataSource, UITableViewDelegate {
                 self.tableView.deleteRows(at: [indexPath], with: .fade)
                 self.tableView.endUpdates()
                 
-                let userInfo = ["deletedFromFavoritesArticle": deletedArticle]
-                NotificationCenter.default.post(name: .didRemoveArticleFromFavorites, object: nil, userInfo: userInfo)
-                completion(true)
-            }
-            deleteAction.image = UIImage(systemName: "trash")
-            return UISwipeActionsConfiguration(actions: [deleteAction])
-        case .mock(let model):
-            let deleteAction = UIContextualAction(style: .destructive, title: nil) { [weak self] (_, _, completion) in
-                guard let self = self else { return }
-                
-                var newModel = model
-                let deletedArticle = model[indexPath.row]
-                newModel.remove(at: indexPath.row)
-                self.state = .mock(newModel)
-                
-                self.tableView.beginUpdates()
-                self.tableView.deleteRows(at: [indexPath], with: .fade)
-                self.tableView.endUpdates()
-                
-                let userInfo = ["deletedFromFavoritesArticle": deletedArticle]
-                NotificationCenter.default.post(name: .didRemoveArticleFromFavorites, object: nil, userInfo: userInfo)
-                completion(true)
+                self.removeArticleFromDatabase(deletedArticle,
+                                               deletedIndexPath: indexPath,
+                                               using: model,
+                                               completion: completion)
             }
             deleteAction.image = UIImage(systemName: "trash")
             return UISwipeActionsConfiguration(actions: [deleteAction])

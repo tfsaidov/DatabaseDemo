@@ -21,10 +21,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         self.window = UIWindow(windowScene: windowScene)
+        let realmCoordinator = RealmCoordinator()
         let rootViewController = UITabBarController()
         rootViewController.viewControllers = [
-            UINavigationController(rootViewController: NewsViewController(dataType: .mock)),
-            UINavigationController(rootViewController: FavoritesViewController())
+            UINavigationController(rootViewController: NewsViewController(dataType: .mock,
+                                                                          databaseCoordinator: realmCoordinator)),
+            UINavigationController(rootViewController: FavoritesViewController(databaseCoordinator: realmCoordinator))
         ]
         rootViewController.viewControllers?.enumerated().forEach({
             if $0 == 0 {

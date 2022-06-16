@@ -137,18 +137,20 @@ final class ArticleTableViewCell: UITableViewCell {
     @objc private func didTapFavoriteButton() {
         let imageName = self.viewModel?.isFavorite == false
         ? "heart.circle.fill"
-        : "heart.circle"
+        : "heart.circle" // "suit.heart"
         UIView.animate(withDuration: 0.2) {
             self.favoriteButton.setImage(UIImage(systemName: imageName), for: .normal)
             self.favoriteButton.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
         } completion: { _ in
             guard var newViewModel = self.viewModel else { return }
             
-            self.favoriteButton.transform = .identity
-            
-            newViewModel.isFavorite.toggle()
-            self.viewModel = newViewModel
-            self.delegate?.wasLikedArticle(with: newViewModel.url)
+            UIView.animate(withDuration: 0.2) {
+                self.favoriteButton.transform = .identity
+            } completion: { _ in
+                newViewModel.isFavorite.toggle()
+                self.viewModel = newViewModel
+                self.delegate?.wasLikedArticle(with: newViewModel.url)
+            }
         }
     }
 }
@@ -166,7 +168,7 @@ extension ArticleTableViewCell: Setupable {
         self.descriptionLabel.text = viewModel.description
         self.publishedDateLabel.text = viewModel.publishedAt
         let imageName = self.viewModel?.isFavorite == false
-        ? "heart.circle"
+        ? "heart.circle" // "suit.heart"
         : "heart.circle.fill"
         self.favoriteButton.setImage(UIImage(systemName: imageName), for: .normal)
         
@@ -184,7 +186,7 @@ extension ArticleTableViewCell: Changable {
         self.viewModel = viewModel
         
         let imageName = self.viewModel?.isFavorite == false
-        ? "heart.circle"
+        ? "heart.circle" // "suit.heart"
         : "heart.circle.fill"
         self.favoriteButton.setImage(UIImage(systemName: imageName), for: .normal)
     }
