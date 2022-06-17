@@ -172,7 +172,7 @@ final class NewsViewController: UIViewController {
                 return
             }
             
-            guard !obtainedArticles.isEmpty else {
+            guard !obtainedArticles.isEmpty, !obtainedArticleRealmModels.isEmpty else {
                 self.stopAnimating()
                 self.state = .loaded(data: obtainedArticles)
                 self.tableView.reloadData()
