@@ -22,32 +22,36 @@ final class RealmCoordinator {
 
 extension RealmCoordinator: DatabaseCoordinatable {
     
-    func create<T>(_ model: T.Type, keyedValues: [String: Any], completion: @escaping (Result<T, DatabaseError>) -> Void) where T : Storable {
+    func create<T>(_ model: T.Type, keyedValues: [[String: Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
         self.backgroundQueue.async {
             do {
                 let realm = try Realm()
                 
                 try self.safeWrite(in: realm) {
-                    guard let model = model as? Object.Type,
-                          let newObject = realm.create(model, value: keyedValues, update: .all) as? T
-                    else {
+                    guard let model = model as? Object.Type else {
                         self.mainQueue.async { completion(.failure(.wrongModel)) }
                         return
                     }
                     
-                    let objectRef = ThreadSafeReference(to: newObject)
+                    var objectsRefs: [ThreadSafeReference<Object>] = []
+                    keyedValues.forEach {
+                        let newObject = realm.create(model, value: $0, update: .all)
+                        let objectRef = ThreadSafeReference(to: newObject)
+                        objectsRefs.append(objectRef)
+                    }
                     
                     self.mainQueue.async {
                         do {
                             let realmOnMainThread = try Realm()
                             realmOnMainThread.refresh()
+                            let objects = objectsRefs.compactMap { realmOnMainThread.resolve($0) }
                             
-                            guard let newObject = realmOnMainThread.resolve(objectRef) else {
+                            guard let result = objects as? [T] else {
                                 completion(.failure(.wrongModel))
                                 return
                             }
                             
-                            completion(.success(newObject))
+                            completion(.success(result))
                         } catch {
                             completion(.failure(.error(desription: "Fail to fetch all objects")))
                         }
@@ -59,42 +63,29 @@ extension RealmCoordinator: DatabaseCoordinatable {
         }
     }
     
-    func save<T>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void) where T : Storable {
-        self.backgroundQueue.async {
-            do {
-                let realm = try Realm()
-                
-                try self.safeWrite(in: realm) {
-                    guard let savedObject = object as? Object else {
-                        self.mainQueue.async { completion(.failure(.wrongModel)) }
-                        return
+    func update<T>(_ model: T.Type, predicate: NSPredicate?, keyedValues: [String: Any], completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
+        self.fetch(model, predicate: predicate) { [weak self] result in
+            switch result {
+            case .success(let fetchedObjects):
+                self?.backgroundQueue.async {
+                    do {
+                        let realm = try Realm()
+                        
+                        try self?.safeWrite(in: realm) {
+                            guard let modifiedObjects = fetchedObjects as? [Object] else {
+                                self?.mainQueue.async { completion(.failure(.wrongModel)) }
+                                return
+                            }
+                            
+                            realm.add(modifiedObjects, update: .modified)
+                            self?.mainQueue.async { completion(.success(fetchedObjects)) }
+                        }
+                    } catch {
+                        self?.mainQueue.async { completion(.failure(.error(desription: "Fail to update object in storage"))) }
                     }
-                    
-                    realm.add(savedObject, update: .all)
-                    self.mainQueue.async { completion(.success(object)) }
                 }
-            } catch {
-                self.mainQueue.async { completion(.failure(.error(desription: "Fail to save object in storage"))) }
-            }
-        }
-    }
-    
-    func update<T>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void) where T : Storable {
-        self.backgroundQueue.async {
-            do {
-                let realm = try Realm()
-                
-                try self.safeWrite(in: realm) {
-                    guard let modifiedObject = object as? Object else {
-                        self.mainQueue.async { completion(.failure(.wrongModel)) }
-                        return
-                    }
-                    
-                    realm.add(modifiedObject, update: .modified)
-                    self.mainQueue.async { completion(.success(object)) }
-                }
-            } catch {
-                self.mainQueue.async { completion(.failure(.error(desription: "Fail to update object in storage"))) }
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -110,17 +101,27 @@ extension RealmCoordinator: DatabaseCoordinatable {
                 }
                 
                 var objects = realm.objects(model)
-                
                 if let predicate = predicate {
                     objects = objects.filter(predicate)
                 }
+                let objectsRef = Array(objects).map { ThreadSafeReference(to: $0) }
                 
-                guard let results = Array(objects) as? [T] else {
-                    self.mainQueue.async { completion(.failure(.wrongModel)) }
-                    return
+                self.mainQueue.async {
+                    do {
+                        let realmOnMainThread = try Realm()
+                        realmOnMainThread.refresh()
+                        let objects = objectsRef.compactMap { realmOnMainThread.resolve($0) }
+                        
+                        guard let result = objects as? [T] else {
+                            completion(.failure(.wrongModel))
+                            return
+                        }
+                        
+                        completion(.success(result))
+                    } catch {
+                        completion(.failure(.error(desription: "Fail to fetch all objects")))
+                    }
                 }
-                
-                self.mainQueue.async { completion(.success(results)) }
             } catch {
                 self.mainQueue.async { completion(.failure(.error(desription: "Fail to fetch objects"))) }
             }
@@ -128,46 +129,10 @@ extension RealmCoordinator: DatabaseCoordinatable {
     }
     
     func fetchAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        self.backgroundQueue.async {
-            do {
-                let realm = try Realm()
-                
-                guard let model = model as? Object.Type else {
-                    self.mainQueue.async { completion(.failure(.wrongModel)) }
-                    return
-                }
-                
-                let objects = realm.objects(model)
-                
-                guard let result = Array(objects) as? [T] else {
-                    self.mainQueue.async { completion(.failure(.wrongModel)) }
-                    return
-                }
-                
-                let objectsRef = result.map { ThreadSafeReference(to: $0) }
-                
-                self.mainQueue.async {
-                    do {
-                        let realmOnMainThread = try Realm()
-                        realmOnMainThread.refresh()
-                        let result = objectsRef.compactMap { realmOnMainThread.resolve($0) }
-                        completion(.success(result))
-                    } catch {
-                        completion(.failure(.error(desription: "Fail to fetch all objects")))
-                    }
-                }
-            } catch {
-                self.mainQueue.async { completion(.failure(.error(desription: "Fail to fetch all objects"))) }
-            }
-        }
+        self.fetch(model, predicate: nil, completion: completion)
     }
     
     func delete<T>(_ model: T.Type, predicate: NSPredicate?, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        guard let predicate = predicate else {
-            completion(.failure(.unknown))
-            return
-        }
-        
         self.backgroundQueue.async {
             do {
                 let realm = try Realm()
@@ -177,12 +142,17 @@ extension RealmCoordinator: DatabaseCoordinatable {
                     return
                 }
                 
-                let deletedObject = realm.objects(model).filter(predicate)
+                let deletedObjects: Results<Object>
+                if let predicate = predicate {
+                    deletedObjects = realm.objects(model).filter(predicate)
+                } else {
+                    deletedObjects = realm.objects(model)
+                }
                 
                 try self.safeWrite(in: realm) {
-                    realm.delete(deletedObject)
+                    realm.delete(deletedObjects)
                     
-                    guard let results = Array(deletedObject) as? [T] else {
+                    guard let results = Array(deletedObjects) as? [T] else {
                         self.mainQueue.async { completion(.success([])) }
                         return
                     }
@@ -196,30 +166,6 @@ extension RealmCoordinator: DatabaseCoordinatable {
     }
     
     func deleteAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        self.backgroundQueue.async {
-            do {
-                let realm = try Realm()
-                
-                guard let model = model as? Object.Type else {
-                    self.mainQueue.async { completion(.failure(.wrongModel)) }
-                    return
-                }
-                
-                let deletedObject = realm.objects(model)
-                
-                try self.safeWrite(in: realm) {
-                    realm.delete(deletedObject)
-                    
-                    guard let results = Array(deletedObject) as? [T] else {
-                        self.mainQueue.async { completion(.success([])) }
-                        return
-                    }
-                    
-                    self.mainQueue.async { completion(.success(results)) }
-                }
-            } catch {
-                self.mainQueue.async { completion(.failure(.error(desription: "Fail to delete objects from storage"))) }
-            }
-        }
+        self.delete(model, predicate: nil, completion: completion)
     }
 }
