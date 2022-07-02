@@ -121,7 +121,6 @@ class FavoritesViewController: UIViewController {
                     
                     completion(false)
                 }
-                
                 let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                title: "Сouldn't remove article from favorites section", message: "Please try again later",
                                                                hasAction: true, actionInfo: (title: "Repeat", style: .default),

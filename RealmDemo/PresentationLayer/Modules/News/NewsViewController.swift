@@ -314,7 +314,6 @@ final class NewsViewController: UIViewController {
                                                                    isFavorite: !filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
-                
                 let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                title: "Сouldn't add article to favorites section", message: "Please try again later",
                                                                hasAction: true, actionInfo: (title: "Repeat", style: .default),
@@ -358,7 +357,6 @@ final class NewsViewController: UIViewController {
                                                                    isFavorite: !filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
-                
                 let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                title: "Сouldn't remove article from favorites section", message: "Please try again later",
                                                                hasAction: true, actionInfo: (title: "Repeat", style: .default),
