@@ -101,19 +101,47 @@ class FavoritesViewController: UIViewController {
             
             switch result {
             case .success:
-                let userInfo = ["deletedFromFavoritesArticle": deletedArticle]
-                NotificationCenter.default.post(name: .didRemoveArticleFromFavorites, object: nil, userInfo: userInfo)
-                completion(true)
+                self.databaseCoordinator.saveContext { result in
+                    switch result {
+                    case .success:
+                        let userInfo = ["deletedFromFavoritesArticle": deletedArticle]
+                        NotificationCenter.default.post(name: .didRemoveArticleFromFavorites, object: nil, userInfo: userInfo)
+                        completion(true)
+                    case .failure:
+                        let repeatCompletion: (UIAlertAction) -> Void = { _ in
+                            self.removeArticleFromDatabase(deletedArticle,
+                                                           deletedIndexPath: deletedIndexPath,
+                                                           using: model,
+                                                           completion: completion)
+                        }
+                        let cancelCompletion: (UIAlertAction) -> Void  = { _ in
+                            self.state = .hasModel(model: model)
+                            
+                            self.tableView.beginUpdates()
+                            self.tableView.insertRows(at: [deletedIndexPath], with: .fade)
+                            self.tableView.endUpdates()
+                            
+                            completion(false)
+                        }
+                        
+                        let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                                       title: "Сouldn't remove article from favorites section", message: "Please try again later",
+                                                                       hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                                       hasCancel: true,
+                                                                       actionCompletionHandler: repeatCompletion,
+                                                                       cancelCompletionHandler: cancelCompletion)
+                        self.present(alertController, animated: true)
+                    }
+                }
             case .failure(let error):
                 print("🍓 \(error)")
-                let alertController = UIAlertController(title: "Сouldn't remove article from favorites section", message: "Please try again later", preferredStyle: .alert)
-                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                let repeatCompletion: (UIAlertAction) -> Void = { _ in
                     self.removeArticleFromDatabase(deletedArticle,
                                                    deletedIndexPath: deletedIndexPath,
                                                    using: model,
                                                    completion: completion)
                 }
-                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                let cancelCompletion: (UIAlertAction) -> Void  = { _ in
                     self.state = .hasModel(model: model)
                     
                     self.tableView.beginUpdates()
@@ -123,8 +151,12 @@ class FavoritesViewController: UIViewController {
                     completion(false)
                 }
                 
-                alertController.addAction(repeatAction)
-                alertController.addAction(cancelAction)
+                let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                               title: "Сouldn't remove article from favorites section", message: "Please try again later",
+                                                               hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                               hasCancel: true,
+                                                               actionCompletionHandler: repeatCompletion,
+                                                               cancelCompletionHandler: cancelCompletion)
                 self.present(alertController, animated: true)
             }
         }

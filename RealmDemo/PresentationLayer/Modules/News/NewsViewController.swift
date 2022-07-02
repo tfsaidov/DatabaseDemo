@@ -125,7 +125,8 @@ final class NewsViewController: UIViewController {
     }
     
     private func showAlert() {
-        let alertController = UIAlertController(title: "Migration is in progress", message: "Please wait until the migration is over", preferredStyle: .actionSheet)
+        let alertController = UIAlertController.create(preferredStyle: .actionSheet,
+                                                       title: "Migration is in progress", message: "Please wait until the migration is over")
         self.present(alertController, animated: true)
     }
     
@@ -306,21 +307,49 @@ final class NewsViewController: UIViewController {
             switch result {
             case .success(let article):
 //                print("🍋 \(article.title) \(article.isFavorite)")
-                var newData = data
-                newData[index] = filterArticle
-                self.state = .loaded(data: newData)
-                
-                let userInfo = ["article": filterArticle]
-                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+                self.databaseCoordinator.saveContext { result in
+                    switch result {
+                    case .success:
+                        var newData = data
+                        newData[index] = filterArticle
+                        self.state = .loaded(data: newData)
+                        
+                        let userInfo = ["article": filterArticle]
+                        NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+                    case .failure:
+                        let repeatCompletion: (UIAlertAction) -> Void = { _ in
+                            self.saveArticleInDatabase(filterArticle,
+                                                       index: index,
+                                                       using: data)
+                        }
+                        let cancelCompletion: (UIAlertAction) -> Void  = { _ in
+                            guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
+                            
+                            let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
+                                                                           description: filterArticle.description,
+                                                                           publishedAt: filterArticle.publishedAt,
+                                                                           url: filterArticle.url,
+                                                                           isFavorite: filterArticle.isFavorite)
+                            cell.change(with: viewModel)
+                        }
+                        
+                        let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                                       title: "Сouldn't add article to favorites section", message: "Please try again later",
+                                                                       hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                                       hasCancel: true,
+                                                                       actionCompletionHandler: repeatCompletion,
+                                                                       cancelCompletionHandler: cancelCompletion)
+                        self.present(alertController, animated: true)
+                    }
+                }
             case .failure(let error):
 //                print("🍋 \(error)")
-                let alertController = UIAlertController(title: "Сouldn't add article to favorites section", message: "Please try again later", preferredStyle: .alert)
-                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                let repeatCompletion: (UIAlertAction) -> Void = { _ in
                     self.saveArticleInDatabase(filterArticle,
                                                index: index,
                                                using: data)
                 }
-                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                let cancelCompletion: (UIAlertAction) -> Void  = { _ in
                     guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
                     
                     let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
@@ -331,8 +360,12 @@ final class NewsViewController: UIViewController {
                     cell.change(with: viewModel)
                 }
                 
-                alertController.addAction(repeatAction)
-                alertController.addAction(cancelAction)
+                let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                               title: "Сouldn't add article to favorites section", message: "Please try again later",
+                                                               hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                               hasCancel: true,
+                                                               actionCompletionHandler: repeatCompletion,
+                                                               cancelCompletionHandler: cancelCompletion)
                 self.present(alertController, animated: true)
             }
         }
@@ -342,25 +375,55 @@ final class NewsViewController: UIViewController {
                                            index: Int,
                                            using data:[News.Article]) {
         let predicate = NSPredicate(format: "url == %@", filterArticle.url)
-        self.databaseCoordinator.delete(ArticleCoreDataModel.self, predicate: predicate) { result in
+        self.databaseCoordinator.delete(ArticleCoreDataModel.self, predicate: predicate) { [weak self] result in
+            guard let self = self else { return }
+            
             switch result {
             case .success(let articles):
 //                print("🍊 \(articles)")
-                var newData = data
-                newData[index] = filterArticle
-                self.state = .loaded(data: newData)
-                
-                let userInfo = ["article": filterArticle]
-                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+                self.databaseCoordinator.saveContext { result in
+                    switch result {
+                    case .success:
+                        var newData = data
+                        newData[index] = filterArticle
+                        self.state = .loaded(data: newData)
+                        
+                        let userInfo = ["article": filterArticle]
+                        NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
+                    case .failure:
+                        let repeatCompletion: (UIAlertAction) -> Void = { _ in
+                            self.removeArticleFromDatabase(filterArticle,
+                                                           index: index,
+                                                           using: data)
+                        }
+                        let cancelCompletion: (UIAlertAction) -> Void  = { _ in
+                            guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
+                            
+                            let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
+                                                                           description: filterArticle.description,
+                                                                           publishedAt: filterArticle.publishedAt,
+                                                                           url: filterArticle.url,
+                                                                           isFavorite: filterArticle.isFavorite)
+                            cell.change(with: viewModel)
+                        }
+                        
+                        let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                                       title: "Сouldn't remove article from favorites section", message: "Please try again later",
+                                                                       hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                                       hasCancel: true,
+                                                                       actionCompletionHandler: repeatCompletion,
+                                                                       cancelCompletionHandler: cancelCompletion)
+                        self.present(alertController, animated: true)
+                    }
+                }
             case .failure(let error):
 //                print("🍊 \(error)")
-                let alertController = UIAlertController(title: "Сouldn't remove article from favorites section", message: "Please try again later", preferredStyle: .alert)
-                let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
+                let repeatCompletion: (UIAlertAction) -> Void = { _ in
                     self.removeArticleFromDatabase(filterArticle,
                                                    index: index,
                                                    using: data)
                 }
-                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                let cancelCompletion: (UIAlertAction) -> Void  = { _ in
                     guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
                     
                     let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
@@ -371,8 +434,12 @@ final class NewsViewController: UIViewController {
                     cell.change(with: viewModel)
                 }
                 
-                alertController.addAction(repeatAction)
-                alertController.addAction(cancelAction)
+                let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                               title: "Сouldn't remove article from favorites section", message: "Please try again later",
+                                                               hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                               hasCancel: true,
+                                                               actionCompletionHandler: repeatCompletion,
+                                                               cancelCompletionHandler: cancelCompletion)
                 self.present(alertController, animated: true)
             }
         }
