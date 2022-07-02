@@ -18,6 +18,8 @@ final class ArticleRealmModel: Object {
     @objc dynamic var publishedAt: String = ""
     @objc dynamic var isFavorite: Bool = false
     
+    @objc dynamic var isNewKey: Bool = true
+    
     override static func primaryKey() -> String? {
         return "url"
     }
