@@ -285,7 +285,7 @@ final class NewsViewController: UIViewController {
     private func saveArticleInDatabase(_ filterArticle: News.Article,
                                        index: Int,
                                        using data:[News.Article]) {
-        self.databaseCoordinator.create(ArticleRealmModel.self, keyedValues: filterArticle.keyedValues) { [weak self] result in
+        self.databaseCoordinator.create(ArticleRealmModel.self, keyedValues: [filterArticle.keyedValues]) { [weak self] result in
             guard let self = self else { return }
             
             switch result {

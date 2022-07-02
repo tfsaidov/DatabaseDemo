@@ -18,11 +18,9 @@ enum DatabaseError: Error {
 
 protocol DatabaseCoordinatable {
     /// Создание объекта заданного типа.
-    func create<T: Storable>(_ model: T.Type, keyedValues: [String: Any], completion: @escaping (Result<T, DatabaseError>) -> Void)
-    /// Сохранение объекта.
-    func save<T: Storable>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void)
+    func create<T: Storable>(_ model: T.Type, keyedValues: [[String: Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Обновление объекта заданного типа с помощью предиката.
-    func update<T: Storable>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void)
+    func update<T: Storable>(_ model: T.Type, predicate: NSPredicate?, keyedValues: [String: Any], completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Удаление объектов заданного типа с помощью предиката.
     func delete<T: Storable>(_ model: T.Type, predicate: NSPredicate?, completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Удаление всех объектов заданного типа.
