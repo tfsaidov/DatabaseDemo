@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3C66D8792870DBB10061964F /* UIAlertController+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C66D8782870DBB10061964F /* UIAlertController+extension.swift */; };
 		3C782589285675360031F050 /* Changable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C782588285675360031F050 /* Changable.swift */; };
 		3C841CE52855079F00F7B303 /* FavoritesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C841CE42855079F00F7B303 /* FavoritesViewController.swift */; };
 		3C841CE728550E2B00F7B303 /* NSNotification.Name+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C841CE628550E2A00F7B303 /* NSNotification.Name+extension.swift */; };
@@ -33,6 +34,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3C66D8782870DBB10061964F /* UIAlertController+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIAlertController+extension.swift"; sourceTree = "<group>"; };
 		3C782588285675360031F050 /* Changable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Changable.swift; sourceTree = "<group>"; };
 		3C841CE42855079F00F7B303 /* FavoritesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesViewController.swift; sourceTree = "<group>"; };
 		3C841CE628550E2A00F7B303 /* NSNotification.Name+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSNotification.Name+extension.swift"; sourceTree = "<group>"; };
@@ -176,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				3CE36EAE284C084200FE0F3A /* String+extension.swift */,
+				3C66D8782870DBB10061964F /* UIAlertController+extension.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -326,6 +329,7 @@
 				3CE36E93284BD54600FE0F3A /* NewsViewController.swift in Sources */,
 				3CF6EF67285B3FA700A8B20F /* DatabaseCoordinatable.swift in Sources */,
 				3CE36EAD284C07CB00FE0F3A /* Setupable.swift in Sources */,
+				3C66D8792870DBB10061964F /* UIAlertController+extension.swift in Sources */,
 				3C841CE928551E4800F7B303 /* FavoriteArticleTableViewCell.swift in Sources */,
 				3CD4FED82858E5DB0015B388 /* RealmCoordinator.swift in Sources */,
 				3CE36EA9284BD88200FE0F3A /* HTTPMethod.swift in Sources */,
@@ -481,6 +485,7 @@
 				DEVELOPMENT_TEAM = 7LYWWLCN92;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RealmDemo/Resourses/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DatabaseDemo;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -509,6 +514,7 @@
 				DEVELOPMENT_TEAM = 7LYWWLCN92;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RealmDemo/Resourses/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DatabaseDemo;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
