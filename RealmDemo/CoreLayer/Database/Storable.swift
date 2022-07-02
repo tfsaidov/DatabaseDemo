@@ -7,7 +7,9 @@
 
 import Foundation
 import RealmSwift
+import CoreData
 
-protocol Storable: ThreadConfined {}
+protocol Storable {}
 
 extension Object: Storable {}
+extension NSManagedObject: Storable {}

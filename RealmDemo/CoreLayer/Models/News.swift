@@ -37,11 +37,11 @@ struct News: Decodable {
         
         var keyedValues: [String: Any] {
             return [
-                "author": self.author ?? "",
-                "imageURL": self.imageURL ?? "",
-                "content": self.content ?? "",
+                "author": self.author ?? .empty,
+                "imageURL": self.imageURL ?? .empty,
+                "content": self.content ?? .empty,
                 "title": self.title,
-                "specification": self.description ?? "",
+                "specification": self.description ?? .empty,
                 "url": self.url,
                 "publishedAt": self.publishedAt,
                 "isFavorite": self.isFavorite
@@ -80,6 +80,17 @@ struct News: Decodable {
             self.url = articleRealmModel.url
             self.publishedAt = articleRealmModel.publishedAt
             self.isFavorite = articleRealmModel.isFavorite
+        }
+        
+        init(articleCoreDataModel: ArticleCoreDataModel) {
+            self.author = articleCoreDataModel.author
+            self.imageURL = articleCoreDataModel.imageURL
+            self.content = articleCoreDataModel.content
+            self.title = articleCoreDataModel.title ?? .empty
+            self.description = articleCoreDataModel.specification
+            self.url = articleCoreDataModel.url ?? .empty
+            self.publishedAt = articleCoreDataModel.publishedAt ?? .empty
+            self.isFavorite = articleCoreDataModel.isFavorite
         }
         
         static func ==(lhs: Article, rhs: Article) -> Bool {

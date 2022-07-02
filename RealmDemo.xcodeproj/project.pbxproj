@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		3C66D85F287071A20061964F /* Realm in Frameworks */ = {isa = PBXBuildFile; productRef = 3C66D85E287071A20061964F /* Realm */; };
 		3C66D861287071A20061964F /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 3C66D860287071A20061964F /* RealmSwift */; };
+		3C66D865287076910061964F /* DatabaseDemo.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 3C66D863287076910061964F /* DatabaseDemo.xcdatamodeld */; };
+		3C66D867287077550061964F /* CoreDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C66D866287077550061964F /* CoreDataCoordinator.swift */; };
+		3C66D869287093580061964F /* MigrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C66D868287093580061964F /* MigrationService.swift */; };
 		3C782589285675360031F050 /* Changable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C782588285675360031F050 /* Changable.swift */; };
 		3C841CE52855079F00F7B303 /* FavoritesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C841CE42855079F00F7B303 /* FavoritesViewController.swift */; };
 		3C841CE728550E2B00F7B303 /* NSNotification.Name+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C841CE628550E2A00F7B303 /* NSNotification.Name+extension.swift */; };
@@ -34,6 +37,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3C66D864287076910061964F /* DatabaseDemo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = DatabaseDemo.xcdatamodel; sourceTree = "<group>"; };
+		3C66D866287077550061964F /* CoreDataCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataCoordinator.swift; sourceTree = "<group>"; };
+		3C66D868287093580061964F /* MigrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationService.swift; sourceTree = "<group>"; };
 		3C782588285675360031F050 /* Changable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Changable.swift; sourceTree = "<group>"; };
 		3C841CE42855079F00F7B303 /* FavoritesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesViewController.swift; sourceTree = "<group>"; };
 		3C841CE628550E2A00F7B303 /* NSNotification.Name+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSNotification.Name+extension.swift"; sourceTree = "<group>"; };
@@ -73,6 +79,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3C66D862287076770061964F /* CoreData */ = {
+			isa = PBXGroup;
+			children = (
+				3C66D866287077550061964F /* CoreDataCoordinator.swift */,
+				3C66D863287076910061964F /* DatabaseDemo.xcdatamodeld */,
+			);
+			path = CoreData;
+			sourceTree = "<group>";
+		};
 		3C841CEA2855270B00F7B303 /* AppDelegate */ = {
 			isa = PBXGroup;
 			children = (
@@ -225,6 +240,7 @@
 				3C841CEC2855272700F7B303 /* CoreLayer */,
 				3CE671EB285C6B250063F310 /* Examples */,
 				3C841CF82855286A00F7B303 /* Resourses */,
+				3C66D868287093580061964F /* MigrationService.swift */,
 			);
 			path = RealmDemo;
 			sourceTree = "<group>";
@@ -240,6 +256,7 @@
 		3CF6EF6A285B437D00A8B20F /* Database */ = {
 			isa = PBXGroup;
 			children = (
+				3C66D862287076770061964F /* CoreData */,
 				3CF6EF6B285B438600A8B20F /* Realm */,
 				3CF6EF66285B3FA700A8B20F /* DatabaseCoordinatable.swift */,
 				3CF6EF68285B3FBE00A8B20F /* Storable.swift */,
@@ -339,7 +356,10 @@
 				3CF6EF67285B3FA700A8B20F /* DatabaseCoordinatable.swift in Sources */,
 				3CE36EAD284C07CB00FE0F3A /* Setupable.swift in Sources */,
 				3C841CE928551E4800F7B303 /* FavoriteArticleTableViewCell.swift in Sources */,
+				3C66D869287093580061964F /* MigrationService.swift in Sources */,
 				3CD4FED82858E5DB0015B388 /* RealmCoordinator.swift in Sources */,
+				3C66D867287077550061964F /* CoreDataCoordinator.swift in Sources */,
+				3C66D865287076910061964F /* DatabaseDemo.xcdatamodeld in Sources */,
 				3CE36EA9284BD88200FE0F3A /* HTTPMethod.swift in Sources */,
 				3CE36E8F284BD54600FE0F3A /* AppDelegate.swift in Sources */,
 				3CE36EAB284C03A000FE0F3A /* ArticleTableViewCell.swift in Sources */,
@@ -585,6 +605,19 @@
 			productName = RealmSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		3C66D863287076910061964F /* DatabaseDemo.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				3C66D864287076910061964F /* DatabaseDemo.xcdatamodel */,
+			);
+			currentVersion = 3C66D864287076910061964F /* DatabaseDemo.xcdatamodel */;
+			path = DatabaseDemo.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 3CE36E83284BD54600FE0F3A /* Project object */;
 }

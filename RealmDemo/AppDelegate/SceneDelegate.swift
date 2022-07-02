@@ -16,17 +16,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         self.window = UIWindow(windowScene: windowScene)
-        let realmCoordinator = RealmCoordinator()
+        let databaseCoordinator = MigrationService.shared.coreDataCoordinator //.realmCoordinator //.coreDataCoordinator
         let rootViewController = UITabBarController()
         rootViewController.viewControllers = [
             UINavigationController(rootViewController: NewsViewController(dataType: .mock,
-                                                                          databaseCoordinator: realmCoordinator)),
-            UINavigationController(rootViewController: FavoritesViewController(databaseCoordinator: realmCoordinator))
+                                                                          databaseCoordinator: databaseCoordinator)),
+            UINavigationController(rootViewController: FavoritesViewController(databaseCoordinator: databaseCoordinator))
         ]
         rootViewController.viewControllers?.enumerated().forEach({
             if $0 == 0 {

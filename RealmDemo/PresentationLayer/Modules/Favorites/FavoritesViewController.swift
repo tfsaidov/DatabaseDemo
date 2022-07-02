@@ -77,11 +77,11 @@ class FavoritesViewController: UIViewController {
     }
     
     private func fetchArticlesFromDatabase() {
-        self.databaseCoordinator.fetchAll(ArticleRealmModel.self) { result in
+        self.databaseCoordinator.fetchAll(ArticleCoreDataModel.self) { result in
             switch result {
-            case .success(let articleRealmModels):
-//                print("🍇 \(dump(articleRealmModels))")
-                let articles = articleRealmModels.map { News.Article(articleRealmModel: $0) }
+            case .success(let articleCoreDataModels):
+//                print("🍇 \(dump(articleCoreDataModels))")
+                let articles = articleCoreDataModels.map { News.Article(articleCoreDataModel: $0) }
                 self.state = articles.isEmpty ? .empty : .hasModel(model: articles)
                 self.tableView.reloadData()
             case .failure(let error):
@@ -96,7 +96,7 @@ class FavoritesViewController: UIViewController {
                                            using model: [News.Article],
                                            completion: @escaping (Bool) -> Void) {
         let predicate = NSPredicate(format: "url == %@", deletedArticle.url)
-        self.databaseCoordinator.delete(ArticleRealmModel.self, predicate: predicate) { [weak self] result in
+        self.databaseCoordinator.delete(ArticleCoreDataModel.self, predicate: predicate) { [weak self] result in
             guard let self = self else { return }
             
             switch result {

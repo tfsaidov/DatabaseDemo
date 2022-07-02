@@ -10,13 +10,15 @@ import RealmSwift
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    
+    let migrationService: MigrationServiceProtocol = MigrationService.shared
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         self.checkRealmMigration()
+        self.migrateStorageModels()
         return true
     }
 
-    
     // MARK: UISceneSession Lifecycle
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -43,5 +45,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         })
 
         Realm.Configuration.defaultConfiguration = config
+    }
+    
+    private func migrateStorageModels() {
+        if !UserDefaults.standard.bool(forKey: "isMigratedStorageModels") {
+            self.migrationService.migrateStorageModels { downloadsState in
+                switch downloadsState {
+                case .success:
+                    print("💧 Migration success")
+                    UserDefaults.standard.set(true, forKey: "isMigratedStorageModels")
+                case .failure:
+                    print("💧 Migration failure")
+                    break
+                }
+            }
+        }
     }
 }

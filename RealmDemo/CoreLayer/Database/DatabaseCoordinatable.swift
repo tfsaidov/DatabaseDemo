@@ -7,22 +7,29 @@
 
 import Foundation
 
+enum DatabaseType {
+    case realm
+    case coreData
+}
+
 enum DatabaseError: Error {
+    /// Невозможно добавить хранилище.
+    case store(model: String)
+    /// Не найден momd файл.
+    case find(model: String, bundle: Bundle?)
     /// Не найдена модель объекта.
     case wrongModel
     /// Кастомная ошибка.
     case error(desription: String)
     /// Неизвестная ошибка.
-    case unknown
+    case unknown(error: Error)
 }
 
 protocol DatabaseCoordinatable {
     /// Создание объекта заданного типа.
-    func create<T: Storable>(_ model: T.Type, keyedValues: [String: Any], completion: @escaping (Result<T, DatabaseError>) -> Void)
-    /// Сохранение объекта.
-    func save<T: Storable>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void)
+    func create<T: Storable>(_ model: T.Type, keyedValues: [[String: Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Обновление объекта заданного типа с помощью предиката.
-    func update<T: Storable>(object: T, completion: @escaping (Result<T, DatabaseError>) -> Void)
+    func update<T: Storable>(_ model: T.Type, predicate: NSPredicate?, keyedValues: [String: Any], completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Удаление объектов заданного типа с помощью предиката.
     func delete<T: Storable>(_ model: T.Type, predicate: NSPredicate?, completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Удаление всех объектов заданного типа.
@@ -31,4 +38,11 @@ protocol DatabaseCoordinatable {
     func fetch<T: Storable>(_ model: T.Type, predicate: NSPredicate?, completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Получение объектов заданного типа.
     func fetchAll<T: Storable>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void)
+    /// Сохранение изменений зарегистрированных объектов в хранилище контекста.
+    func saveContext(with completion: ((Result<Void, DatabaseError>) -> Void)?)
+}
+
+extension DatabaseCoordinatable {
+    
+    func saveContext(with completion: ((Result<Void, DatabaseError>) -> Void)?) {}
 }

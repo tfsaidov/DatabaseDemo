@@ -120,7 +120,7 @@ final class NewsViewController: UIViewController {
         
         var obtainedError: NetworkError?
         var obtainedArticles: [News.Article] = []
-        var obtainedArticleRealmModels: [ArticleRealmModel] = []
+        var obtainedArticleCoreDataModels: [ArticleCoreDataModel] = []
     
         let completion: (Result<Data, NetworkError>) -> Void = { [weak self] result in
             guard let self = self else { return }
@@ -155,10 +155,10 @@ final class NewsViewController: UIViewController {
         : self.fetchMockData(completion: completion)
         
         dispatchGroup.enter()
-        self.databaseCoordinator.fetchAll(ArticleRealmModel.self) { result in
+        self.databaseCoordinator.fetchAll(ArticleCoreDataModel.self) { result in
             switch result {
-            case .success(let articleRealmModels):
-                obtainedArticleRealmModels = articleRealmModels
+            case .success(let articleCoreDataModels):
+                obtainedArticleCoreDataModels = articleCoreDataModels
             case .failure:
                 break
             }
@@ -172,7 +172,7 @@ final class NewsViewController: UIViewController {
                 return
             }
             
-            guard !obtainedArticles.isEmpty, !obtainedArticleRealmModels.isEmpty else {
+            guard !obtainedArticles.isEmpty, !obtainedArticleCoreDataModels.isEmpty else {
                 self.stopAnimating()
                 self.state = .loaded(data: obtainedArticles)
                 self.tableView.reloadData()
@@ -181,9 +181,9 @@ final class NewsViewController: UIViewController {
             
             for (index, article) in obtainedArticles.enumerated() {
                 var favoriteArticle = article
-                guard let articleRealmModel = obtainedArticleRealmModels.first(where: { $0.url == favoriteArticle.url }) else { continue }
+                guard let articleCoreDataModel = obtainedArticleCoreDataModels.first(where: { $0.url == favoriteArticle.url }) else { continue }
                 
-                favoriteArticle.isFavorite = articleRealmModel.isFavorite
+                favoriteArticle.isFavorite = articleCoreDataModel.isFavorite
                 obtainedArticles[index] = favoriteArticle
             }
             
@@ -285,7 +285,7 @@ final class NewsViewController: UIViewController {
     private func saveArticleInDatabase(_ filterArticle: News.Article,
                                        index: Int,
                                        using data:[News.Article]) {
-        self.databaseCoordinator.create(ArticleRealmModel.self, keyedValues: filterArticle.keyedValues) { [weak self] result in
+        self.databaseCoordinator.create(ArticleCoreDataModel.self, keyedValues: [filterArticle.keyedValues]) { [weak self] result in
             guard let self = self else { return }
             
             switch result {
@@ -327,7 +327,7 @@ final class NewsViewController: UIViewController {
                                            index: Int,
                                            using data:[News.Article]) {
         let predicate = NSPredicate(format: "url == %@", filterArticle.url)
-        self.databaseCoordinator.delete(ArticleRealmModel.self, predicate: predicate) { result in
+        self.databaseCoordinator.delete(ArticleCoreDataModel.self, predicate: predicate) { result in
             switch result {
             case .success(let articles):
 //                print("🍊 \(articles)")
