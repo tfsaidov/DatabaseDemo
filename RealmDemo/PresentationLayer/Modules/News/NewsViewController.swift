@@ -290,7 +290,7 @@ final class NewsViewController: UIViewController {
             
             switch result {
             case .success(let article):
-//                    print("🍋 \(article.title) \(article.isFavorite)")
+//                print("🍋 \(article.title) \(article.isFavorite)")
                 var newData = data
                 newData[index] = filterArticle
                 self.state = .loaded(data: newData)
@@ -298,7 +298,7 @@ final class NewsViewController: UIViewController {
                 let userInfo = ["article": filterArticle]
                 NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
             case .failure(let error):
-//                    print("🍋 \(error)")
+//                print("🍋 \(error)")
                 let alertController = UIAlertController(title: "Сouldn't add article to favorites section", message: "Please try again later", preferredStyle: .alert)
                 let repeatAction = UIAlertAction(title: "Repeat", style: .default) { _ in
                     self.saveArticleInDatabase(filterArticle,

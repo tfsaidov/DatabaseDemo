@@ -8,6 +8,6 @@
 import Foundation
 import RealmSwift
 
-protocol Storable {}
+protocol Storable: ThreadConfined {}
 
 extension Object: Storable {}
