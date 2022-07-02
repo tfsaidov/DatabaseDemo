@@ -15,7 +15,7 @@ extension UIAlertController {
                        hasCancel: Bool = false,
                        actionCompletionHandler: ((UIAlertAction) -> Void)? = nil,
                        cancelCompletionHandler: ((UIAlertAction) -> Void)? = nil) -> UIAlertController {
-        let alertController = UIAlertController(title: title, message: message, preferredStyle: .actionSheet)
+        let alertController = UIAlertController(title: title, message: message, preferredStyle: preferredStyle)
         
         if hasAction {
             let action = UIAlertAction(title: actionInfo?.title ?? .empty, style: actionInfo?.style ?? .default) { action in
