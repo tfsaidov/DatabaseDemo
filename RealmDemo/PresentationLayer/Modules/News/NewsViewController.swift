@@ -58,6 +58,12 @@ final class NewsViewController: UIViewController {
                                                selector: #selector(removeArticleFromFavorites(_:)),
                                                name: .didRemoveArticleFromFavorites,
                                                object: nil)
+        MigrationStateObserver.shared.subscribe(self) { [weak self] state in
+            if state == .ended {
+                self?.presentedViewController?.dismiss(animated: true)
+                self?.obtainData()
+            }
+        }
     }
     
     required init?(coder: NSCoder) {
@@ -66,13 +72,16 @@ final class NewsViewController: UIViewController {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        MigrationStateObserver.shared.unsubscribe(self)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.setupNavigationBar()
         self.setupView()
-        self.obtainData()
+        MigrationStateObserver.shared.state == .begun
+        ? self.showAlert()
+        : self.obtainData()
     }
     
     private func setupNavigationBar() {
@@ -113,6 +122,11 @@ final class NewsViewController: UIViewController {
         return [
             centerYConstraint, centerXConstraint
         ]
+    }
+    
+    private func showAlert() {
+        let alertController = UIAlertController(title: "Migration is in progress", message: "Please wait until the migration is over", preferredStyle: .actionSheet)
+        self.present(alertController, animated: true)
     }
     
     private func obtainData() {
@@ -158,6 +172,7 @@ final class NewsViewController: UIViewController {
         self.databaseCoordinator.fetchAll(ArticleCoreDataModel.self) { result in
             switch result {
             case .success(let articleCoreDataModels):
+//                print("🍒 \(dump(articleCoreDataModels))")
                 obtainedArticleCoreDataModels = articleCoreDataModels
             case .failure:
                 break

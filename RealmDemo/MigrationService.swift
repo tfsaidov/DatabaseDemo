@@ -75,14 +75,11 @@ extension MigrationService: MigrationServiceProtocol {
             
             switch result {
             case .success(let articleObjects):
-                print("💧 💧 Article Realm Models fetched")
-                
                 let articles = articleObjects.map { News.Article(articleRealmModel: $0) }
                 let keyedValues = self.keyedValues(from: articles)
                 self.coreDataCoordinator.create(ArticleCoreDataModel.self, keyedValues: keyedValues) { result in
                     switch result {
                     case .success(let articleCoreDataModels):
-                        print("💧 💧 💧 Article CoreData Models created")
                         guard !articleCoreDataModels.isEmpty else {
                             completion(.success(()))
                             return
@@ -91,21 +88,16 @@ extension MigrationService: MigrationServiceProtocol {
                         self.coreDataCoordinator.saveContext { result in
                             switch result {
                             case .success:
-                                print("💧 💧 💧 💧 CoreData Context saved")
                                 completion(.success(()))
                             case .failure(let error):
-                                print("💧 💧 💧 💧 CoreData Context not saved")
                                 completion(.failure(.error(description: error.localizedDescription)))
                             }
                         }
                     case .failure(let error):
-                        print("💧 💧 💧 Article CoreData Models not created")
                         completion(.failure(.error(description: error.localizedDescription)))
                     }
                 }
             case .failure(let error):
-                print("💧 💧 Article Realm Models not fetched")
-                
                 completion(.failure(.error(description: error.localizedDescription)))
             }
         }

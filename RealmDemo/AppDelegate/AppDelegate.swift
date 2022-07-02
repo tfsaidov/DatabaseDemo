@@ -49,15 +49,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     private func migrateStorageModels() {
         if !UserDefaults.standard.bool(forKey: "isMigratedStorageModels") {
+            MigrationStateObserver.shared.state = .begun
+            
             self.migrationService.migrateStorageModels { downloadsState in
                 switch downloadsState {
                 case .success:
-                    print("💧 Migration success")
                     UserDefaults.standard.set(true, forKey: "isMigratedStorageModels")
                 case .failure:
-                    print("💧 Migration failure")
                     break
                 }
+                MigrationStateObserver.shared.state = .ended
             }
         }
     }

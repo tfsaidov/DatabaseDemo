@@ -20,7 +20,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         self.window = UIWindow(windowScene: windowScene)
-        let databaseCoordinator = MigrationService.shared.coreDataCoordinator //.realmCoordinator //.coreDataCoordinator
+        let databaseCoordinator = MigrationService.shared.coreDataCoordinator
         let rootViewController = UITabBarController()
         rootViewController.viewControllers = [
             UINavigationController(rootViewController: NewsViewController(dataType: .mock,
