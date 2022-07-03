@@ -103,37 +103,41 @@ final class CoreDataCoordinator {
 extension CoreDataCoordinator: DatabaseCoordinatable {
     
     func create<T>(_ model: T.Type, keyedValues: [[String : Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        var entities: [Any] = Array(repeating: true, count: keyedValues.count)
-        
-        keyedValues.enumerated().forEach { (index, keyedValues) in
-            guard let entityDescription = NSEntityDescription.entity(forEntityName: String(describing: model.self),
-                                                                     in: self.mainContext)
-            else {
+        self.mainContext.perform { [weak self] in
+            guard let self = self else { return }
+            
+            var entities: [Any] = Array(repeating: true, count: keyedValues.count)
+            
+            keyedValues.enumerated().forEach { (index, keyedValues) in
+                guard let entityDescription = NSEntityDescription.entity(forEntityName: String(describing: model.self),
+                                                                         in: self.mainContext)
+                else {
+                    completion(.failure(.wrongModel))
+                    return
+                }
+                
+                let entity = NSManagedObject(entity: entityDescription,
+                                             insertInto: self.mainContext)
+                entity.setValuesForKeys(keyedValues)
+                entities[index] = entity
+            }
+            
+            guard let objects = entities as? [T] else {
                 completion(.failure(.wrongModel))
                 return
             }
             
-            let entity = NSManagedObject(entity: entityDescription,
-                                         insertInto: self.mainContext)
-            entity.setValuesForKeys(keyedValues)
-            entities[index] = entity
-        }
-        
-        guard let objects = entities as? [T] else {
-            completion(.failure(.wrongModel))
-            return
-        }
-        
-        guard self.mainContext.hasChanges else {
-            completion(.failure(.store(model: String(describing: model.self))))
-            return
-        }
-        
-        do {
-            try self.mainContext.save()
-            completion(.success(objects))
-        } catch let error {
-            completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+            guard self.mainContext.hasChanges else {
+                completion(.failure(.store(model: String(describing: model.self))))
+                return
+            }
+            
+            do {
+                try self.mainContext.save()
+                completion(.success(objects))
+            } catch let error {
+                completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+            }
         }
     }
     
@@ -147,22 +151,24 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     return
                 }
 
-                fetchedObjects.forEach { fetchedObject in
-                    fetchedObject.setValuesForKeys(keyedValues)
-                }
-                
-                let castFetchedObjects = fetchedObjects as? [T] ?? []
-                
-                guard self.mainContext.hasChanges else {
-                    completion(.failure(.store(model: String(describing: model.self))))
-                    return
-                }
-                
-                do {
-                    try self.mainContext.save()
-                    completion(.success(castFetchedObjects))
-                } catch let error {
-                    completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                self.mainContext.perform {
+                    fetchedObjects.forEach { fetchedObject in
+                        fetchedObject.setValuesForKeys(keyedValues)
+                    }
+                    
+                    let castFetchedObjects = fetchedObjects as? [T] ?? []
+                    
+                    guard self.mainContext.hasChanges else {
+                        completion(.failure(.store(model: String(describing: model.self))))
+                        return
+                    }
+                    
+                    do {
+                        try self.mainContext.save()
+                        completion(.success(castFetchedObjects))
+                    } catch let error {
+                        completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                    }
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -181,21 +187,23 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     return
                 }
 
-                fetchedObjects.forEach { fetchedObject in
-                    self.mainContext.delete(fetchedObject)
-                }
-                let deletedObjects = fetchedObjects as? [T] ?? []
-                
-                guard self.mainContext.hasChanges else {
-                    completion(.failure(.store(model: String(describing: model.self))))
-                    return
-                }
-                
-                do {
-                    try self.mainContext.save()
-                    completion(.success(deletedObjects))
-                } catch let error {
-                    completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                self.mainContext.perform {
+                    fetchedObjects.forEach { fetchedObject in
+                        self.mainContext.delete(fetchedObject)
+                    }
+                    let deletedObjects = fetchedObjects as? [T] ?? []
+                    
+                    guard self.mainContext.hasChanges else {
+                        completion(.failure(.store(model: String(describing: model.self))))
+                        return
+                    }
+                    
+                    do {
+                        try self.mainContext.save()
+                        completion(.success(deletedObjects))
+                    } catch let error {
+                        completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                    }
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -213,33 +221,22 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             return
         }
         
-        let request = model.fetchRequest()
-        request.predicate = predicate
-        guard
-            let fetchRequestResult = try? self.mainContext.fetch(request),
-            let fetchedObjects = fetchRequestResult as? [T]
-        else {
-            completion(.failure(.wrongModel))
-            return
+        self.mainContext.perform {
+            let request = model.fetchRequest()
+            request.predicate = predicate
+            guard
+                let fetchRequestResult = try? self.mainContext.fetch(request),
+                let fetchedObjects = fetchRequestResult as? [T]
+            else {
+                completion(.failure(.wrongModel))
+                return
+            }
+            
+            completion(.success(fetchedObjects))
         }
-        
-        completion(.success(fetchedObjects))
     }
     
     func fetchAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
         self.fetch(model, predicate: nil, completion: completion)
     }
-    
-//    func saveContext(with completion: ((Result<Void, DatabaseError>) -> Void)?) {
-//        self.mainContext.perform { [weak self] in
-//            do {
-//                if self?.mainContext.hasChanges == true {
-//                    try self?.mainContext.save()
-//                    completion?(.success(()))
-//                }
-//            } catch let error {
-//                completion?(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
-//            }
-//        }
-//    }
 }
