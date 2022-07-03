@@ -48,18 +48,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     private func migrateStorageModels() {
-        if !UserDefaults.standard.bool(forKey: "isMigratedStorageModels") {
-            MigrationStateObserver.shared.state = .begun
-            
-            self.migrationService.migrateStorageModels { downloadsState in
-                switch downloadsState {
-                case .success:
-                    UserDefaults.standard.set(true, forKey: "isMigratedStorageModels")
-                case .failure:
-                    break
+        if UserDefaults.standard.bool(forKey: "isNotFirstLaunch") {
+            if !UserDefaults.standard.bool(forKey: "isMigratedStorageModels") {
+                MigrationStateObserver.shared.state = .begun
+                
+                self.migrationService.migrateStorageModels { downloadsState in
+                    switch downloadsState {
+                    case .success:
+                        UserDefaults.standard.set(true, forKey: "isMigratedStorageModels")
+                    case .failure:
+                        break
+                    }
+                    MigrationStateObserver.shared.state = .ended
                 }
-                MigrationStateObserver.shared.state = .ended
             }
+        } else {
+            UserDefaults.standard.set(true, forKey: "isNotFirstLaunch")
         }
     }
 }

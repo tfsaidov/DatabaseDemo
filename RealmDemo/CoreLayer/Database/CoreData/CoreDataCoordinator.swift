@@ -51,9 +51,6 @@ final class CoreDataCoordinator {
         }
     }
 
-
-    // MARK: Static
-
     static func create(url modelUrl: URL) -> Result<CoreDataCoordinator, DatabaseError> {
         do {
             let coordinator = try CoreDataCoordinator(url: modelUrl)
@@ -64,9 +61,6 @@ final class CoreDataCoordinator {
             return .failure(.unknown(error: error))
         }
     }
-
-
-    // MARK: Private Static
 
     private static func setup(coordinator: CoreDataCoordinator) -> Result<CoreDataCoordinator, DatabaseError> {
         let storeCoordinator = coordinator.persistentStoreCoordinator
