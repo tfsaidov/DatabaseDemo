@@ -75,24 +75,17 @@ extension MigrationService: MigrationServiceProtocol {
             
             switch result {
             case .success(let articleObjects):
+                guard !articleObjects.isEmpty else {
+                    completion(.success(()))
+                    return
+                }
+                
                 let articles = articleObjects.map { News.Article(articleRealmModel: $0) }
                 let keyedValues = self.keyedValues(from: articles)
                 self.coreDataCoordinator.create(ArticleCoreDataModel.self, keyedValues: keyedValues) { result in
                     switch result {
-                    case .success(let articleCoreDataModels):
-                        guard !articleCoreDataModels.isEmpty else {
-                            completion(.success(()))
-                            return
-                        }
-                        
-                        self.coreDataCoordinator.saveContext { result in
-                            switch result {
-                            case .success:
-                                completion(.success(()))
-                            case .failure(let error):
-                                completion(.failure(.error(description: error.localizedDescription)))
-                            }
-                        }
+                    case .success:
+                        completion(.success(()))
                     case .failure(let error):
                         completion(.failure(.error(description: error.localizedDescription)))
                     }

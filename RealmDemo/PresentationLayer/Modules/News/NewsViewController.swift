@@ -307,41 +307,12 @@ final class NewsViewController: UIViewController {
             switch result {
             case .success(let article):
 //                print("🍋 \(article.title) \(article.isFavorite)")
-                self.databaseCoordinator.saveContext { result in
-                    switch result {
-                    case .success:
-                        var newData = data
-                        newData[index] = filterArticle
-                        self.state = .loaded(data: newData)
-                        
-                        let userInfo = ["article": filterArticle]
-                        NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
-                    case .failure:
-                        let repeatCompletion: (UIAlertAction) -> Void = { _ in
-                            self.saveArticleInDatabase(filterArticle,
-                                                       index: index,
-                                                       using: data)
-                        }
-                        let cancelCompletion: (UIAlertAction) -> Void  = { _ in
-                            guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
-                            
-                            let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
-                                                                           description: filterArticle.description,
-                                                                           publishedAt: filterArticle.publishedAt,
-                                                                           url: filterArticle.url,
-                                                                           isFavorite: filterArticle.isFavorite)
-                            cell.change(with: viewModel)
-                        }
-                        
-                        let alertController = UIAlertController.create(preferredStyle: .alert,
-                                                                       title: "Сouldn't add article to favorites section", message: "Please try again later",
-                                                                       hasAction: true, actionInfo: (title: "Repeat", style: .default),
-                                                                       hasCancel: true,
-                                                                       actionCompletionHandler: repeatCompletion,
-                                                                       cancelCompletionHandler: cancelCompletion)
-                        self.present(alertController, animated: true)
-                    }
-                }
+                var newData = data
+                newData[index] = filterArticle
+                self.state = .loaded(data: newData)
+                
+                let userInfo = ["article": filterArticle]
+                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
             case .failure(let error):
 //                print("🍋 \(error)")
                 let repeatCompletion: (UIAlertAction) -> Void = { _ in
@@ -359,7 +330,6 @@ final class NewsViewController: UIViewController {
                                                                    isFavorite: filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
-                
                 let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                title: "Сouldn't add article to favorites section", message: "Please try again later",
                                                                hasAction: true, actionInfo: (title: "Repeat", style: .default),
@@ -381,41 +351,12 @@ final class NewsViewController: UIViewController {
             switch result {
             case .success(let articles):
 //                print("🍊 \(articles)")
-                self.databaseCoordinator.saveContext { result in
-                    switch result {
-                    case .success:
-                        var newData = data
-                        newData[index] = filterArticle
-                        self.state = .loaded(data: newData)
-                        
-                        let userInfo = ["article": filterArticle]
-                        NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
-                    case .failure:
-                        let repeatCompletion: (UIAlertAction) -> Void = { _ in
-                            self.removeArticleFromDatabase(filterArticle,
-                                                           index: index,
-                                                           using: data)
-                        }
-                        let cancelCompletion: (UIAlertAction) -> Void  = { _ in
-                            guard let cell = self.tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? ArticleTableViewCell else { return }
-                            
-                            let viewModel = ArticleTableViewCell.ViewModel(title: filterArticle.title,
-                                                                           description: filterArticle.description,
-                                                                           publishedAt: filterArticle.publishedAt,
-                                                                           url: filterArticle.url,
-                                                                           isFavorite: filterArticle.isFavorite)
-                            cell.change(with: viewModel)
-                        }
-                        
-                        let alertController = UIAlertController.create(preferredStyle: .alert,
-                                                                       title: "Сouldn't remove article from favorites section", message: "Please try again later",
-                                                                       hasAction: true, actionInfo: (title: "Repeat", style: .default),
-                                                                       hasCancel: true,
-                                                                       actionCompletionHandler: repeatCompletion,
-                                                                       cancelCompletionHandler: cancelCompletion)
-                        self.present(alertController, animated: true)
-                    }
-                }
+                var newData = data
+                newData[index] = filterArticle
+                self.state = .loaded(data: newData)
+                
+                let userInfo = ["article": filterArticle]
+                NotificationCenter.default.post(name: .wasLikedArticle, object: nil, userInfo: userInfo)
             case .failure(let error):
 //                print("🍊 \(error)")
                 let repeatCompletion: (UIAlertAction) -> Void = { _ in
@@ -433,7 +374,6 @@ final class NewsViewController: UIViewController {
                                                                    isFavorite: filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
-                
                 let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                title: "Сouldn't remove article from favorites section", message: "Please try again later",
                                                                hasAction: true, actionInfo: (title: "Repeat", style: .default),

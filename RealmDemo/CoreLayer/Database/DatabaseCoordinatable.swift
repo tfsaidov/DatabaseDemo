@@ -38,11 +38,4 @@ protocol DatabaseCoordinatable {
     func fetch<T: Storable>(_ model: T.Type, predicate: NSPredicate?, completion: @escaping (Result<[T], DatabaseError>) -> Void)
     /// Получение объектов заданного типа.
     func fetchAll<T: Storable>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void)
-    /// Сохранение изменений зарегистрированных объектов в хранилище контекста.
-    func saveContext(with completion: ((Result<Void, DatabaseError>) -> Void)?)
-}
-
-extension DatabaseCoordinatable {
-    
-    func saveContext(with completion: ((Result<Void, DatabaseError>) -> Void)?) {}
 }
