@@ -66,10 +66,11 @@ final class CoreDataCoordinator {
         let storeCoordinator = coordinator.persistentStoreCoordinator
 
         let fileManager = FileManager.default
-        let storeName = "\(coordinator.modelName).sqlite"
+        let storeName = "\(coordinator.modelName)" + "sqlite"
 
         let documentsDirectoryURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
         let persistentStoreURL = documentsDirectoryURL?.appendingPathComponent(storeName)
+//        print("⭐️ \(persistentStoreURL)")
 
         var databaseError: DatabaseError?
         do {
