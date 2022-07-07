@@ -16,6 +16,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         self.checkRealmMigration()
         self.migrateStorageModels()
+        AuthStateObserver.shared.state = .authorized(user: User(id: UUID().uuidString,
+                                                                name: "Timur"))
         return true
     }
 

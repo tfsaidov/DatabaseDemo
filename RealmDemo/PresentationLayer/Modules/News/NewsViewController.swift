@@ -300,7 +300,7 @@ final class NewsViewController: UIViewController {
     
     private func saveArticleInDatabase(_ filterArticle: News.Article,
                                        index: Int,
-                                       using data:[News.Article]) {
+                                       using data: [News.Article]) {
         self.databaseCoordinator.create(ArticleCoreDataModel.self, keyedValues: [filterArticle.keyedValues]) { [weak self] result in
             guard let self = self else { return }
             
