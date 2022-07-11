@@ -36,4 +36,9 @@ extension String {
                                               range: NSRange(location: 0, length: self.count),
                                               withTemplate: replacement)
     }
+    
+    static func randomString(length: Int = 36) -> Self {
+      let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      return String((0..<length).compactMap { _ in letters.randomElement() })
+    }
 }
