@@ -25,6 +25,7 @@ final class NewsViewController: UIViewController {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.allowsSelection = false
+        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 70, right: 0)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
@@ -35,6 +36,17 @@ final class NewsViewController: UIViewController {
         indicator.isHidden = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         return indicator
+    }()
+    
+    private lazy var updateArticleButton: UIButton = {
+        let button = UIButton()
+        button.isEnabled = false
+        button.backgroundColor = .systemBlue
+        button.layer.cornerRadius = 8
+        button.clipsToBounds = true
+        button.addTarget(self, action: #selector(self.didTapButton), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
     }()
     
     private lazy var decoder: JSONDecoder = {
@@ -94,13 +106,16 @@ final class NewsViewController: UIViewController {
         
         self.view.addSubview(self.tableView)
         self.view.addSubview(self.activityIndicator)
+        self.view.addSubview(self.updateArticleButton)
 
         let tableViewConstraints = self.tableViewConstraints()
         let activityIndicatorConstaints = self.activityIndicatorConstaints()
+        let updateArticleButtonConstraints = self.updateArticleButtonConstraints()
         
         NSLayoutConstraint.activate(
             tableViewConstraints +
-            activityIndicatorConstaints
+            activityIndicatorConstaints +
+            updateArticleButtonConstraints
         )
     }
     
@@ -121,6 +136,17 @@ final class NewsViewController: UIViewController {
         
         return [
             centerYConstraint, centerXConstraint
+        ]
+    }
+    
+    private func updateArticleButtonConstraints() -> [NSLayoutConstraint] {
+        let heightConstraint = self.updateArticleButton.heightAnchor.constraint(equalToConstant: 50)
+        let leftConstraint = self.updateArticleButton.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 20)
+        let rightConstraint = self.updateArticleButton.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -20)
+        let bottomConstraint = self.updateArticleButton.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        
+        return [
+            heightConstraint, leftConstraint, rightConstraint, bottomConstraint
         ]
     }
     
@@ -206,6 +232,7 @@ final class NewsViewController: UIViewController {
             self.stopAnimating()
             self.state = .loaded(data: obtainedArticles)
             self.tableView.reloadData()
+            self.updateArticleButton.isEnabled = true
         }
     }
     
@@ -412,6 +439,27 @@ final class NewsViewController: UIViewController {
                                                                isFavorite: detectedArticle.isFavorite)
                 cell.change(with: viewModel)
             }
+        }
+    }
+    
+    @objc private func didTapButton() {
+        switch self.state {
+        case .loaded(let data):
+            // Изменение заголовка первой статьи из списка статей при условии, что она добавлена в Избранное.
+            guard let article = data.first else { return }
+            
+            let predicate = NSPredicate(format: "url == %@", article.url)
+            let keyedValues: [String: Any] = ["title": String.randomString()]
+            self.databaseCoordinator.update(ArticleCoreDataModel.self, predicate: predicate, keyedValues: keyedValues) { result in
+                switch result {
+                case .success(let models):
+                    print("🥭", models.first?.title)
+                case .failure(let error):
+                    print("🥭 \(error.localizedDescription)")
+                }
+            }
+        case .loading, .error:
+            break
         }
     }
 }
