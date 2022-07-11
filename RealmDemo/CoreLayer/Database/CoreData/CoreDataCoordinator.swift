@@ -15,11 +15,28 @@ final class CoreDataCoordinator {
     private let model: NSManagedObjectModel
     private let persistentStoreCoordinator: NSPersistentStoreCoordinator
 
+    private lazy var saveContext: NSManagedObjectContext = {
+        let masterContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        masterContext.parent = self.mainContext
+        masterContext.mergePolicy = NSOverwriteMergePolicy
+        return masterContext
+    }()
+    
     private lazy var mainContext: NSManagedObjectContext = {
         let mainContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        mainContext.persistentStoreCoordinator = self.persistentStoreCoordinator
+        mainContext.parent = self.masterContext
+        mainContext.mergePolicy = NSOverwriteMergePolicy
         return mainContext
     }()
+    
+    private lazy var masterContext: NSManagedObjectContext = {
+        let masterContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        masterContext.persistentStoreCoordinator = self.persistentStoreCoordinator
+        masterContext.mergePolicy = NSOverwriteMergePolicy
+        return masterContext
+    }()
+    
+    private let mainQueue = DispatchQueue.main
 
     private init(url: URL) throws {
         let pathExtension = url.pathExtension
@@ -93,26 +110,47 @@ final class CoreDataCoordinator {
         
         return .success(coordinator)
     }
+    
+    private func save(with context: NSManagedObjectContext, completion: (() -> Void)? = nil) {
+        guard context.hasChanges else {
+            completion?()
+            return
+        }
+        
+        context.perform {
+            do {
+                try context.save()
+            } catch let error {
+                print("Unable to save changes of context.\nError - \(error.localizedDescription)")
+            }
+            
+            if let parentContext = context.parent {
+                self.save(with: parentContext, completion: completion)
+            } else {
+                completion?()
+            }
+        }
+    }
 }
 
 extension CoreDataCoordinator: DatabaseCoordinatable {
     
     func create<T>(_ model: T.Type, keyedValues: [[String : Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        self.mainContext.perform { [weak self] in
+        self.saveContext.perform { [weak self] in
             guard let self = self else { return }
             
             var entities: [Any] = Array(repeating: true, count: keyedValues.count)
             
             keyedValues.enumerated().forEach { (index, keyedValues) in
                 guard let entityDescription = NSEntityDescription.entity(forEntityName: String(describing: model.self),
-                                                                         in: self.mainContext)
+                                                                         in: self.saveContext)
                 else {
                     completion(.failure(.wrongModel))
                     return
                 }
                 
                 let entity = NSManagedObject(entity: entityDescription,
-                                             insertInto: self.mainContext)
+                                             insertInto: self.saveContext)
                 entity.setValuesForKeys(keyedValues)
                 entities[index] = entity
             }
@@ -122,16 +160,13 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                 return
             }
             
-            guard self.mainContext.hasChanges else {
+            guard self.saveContext.hasChanges else {
                 completion(.failure(.store(model: String(describing: model.self))))
                 return
             }
             
-            do {
-                try self.mainContext.save()
+            self.save(with: self.saveContext) {
                 completion(.success(objects))
-            } catch let error {
-                completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
             }
         }
     }
@@ -216,18 +251,20 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             return
         }
         
-        self.mainContext.perform {
+        self.saveContext.perform {
+            print("💧 \(Thread.current)")
             let request = model.fetchRequest()
             request.predicate = predicate
             guard
-                let fetchRequestResult = try? self.mainContext.fetch(request),
+                let fetchRequestResult = try? self.saveContext.fetch(request),
                 let fetchedObjects = fetchRequestResult as? [T]
             else {
-                completion(.failure(.wrongModel))
+                self.mainQueue.async { completion(.failure(.wrongModel)) }
                 return
             }
             
-            completion(.success(fetchedObjects))
+            print("💧 💧 \(Thread.current)")
+            self.mainQueue.async { completion(.success(fetchedObjects)) }
         }
     }
     
