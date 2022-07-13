@@ -10,6 +10,11 @@ import CoreData
 
 final class CoreDataCoordinator {
     
+    private enum CompletionHandlerType {
+        case success
+        case failure(error: DatabaseError)
+    }
+    
     let modelName: String
 
     private let model: NSManagedObjectModel
@@ -111,9 +116,14 @@ final class CoreDataCoordinator {
         return .success(coordinator)
     }
     
-    private func save(with context: NSManagedObjectContext, completion: (() -> Void)? = nil) {
+    private func save(with context: NSManagedObjectContext,
+                      completionHandler: (() -> Void)? = nil,
+                      failureCompletion: ((DatabaseError) -> Void)? = nil) {
         guard context.hasChanges else {
-            completion?()
+            self.handler(for: .failure(error: .error(desription: "Context has not changes")),
+                         using: context,
+                         with: completionHandler,
+                         and: failureCompletion)
             return
         }
         
@@ -121,13 +131,43 @@ final class CoreDataCoordinator {
             do {
                 try context.save()
             } catch let error {
-                print("Unable to save changes of context.\nError - \(error.localizedDescription)")
+                self.handler(for: .failure(error: .error(desription: "Unable to save changes of context.\nError - \(error.localizedDescription)")),
+                             using: context,
+                             with: completionHandler,
+                             and: failureCompletion)
             }
             
-            if let parentContext = context.parent {
-                self.save(with: parentContext, completion: completion)
-            } else {
-                completion?()
+            guard let parentContext = context.parent else {
+                self.handler(for: .success,
+                             using: context,
+                             with: completionHandler,
+                             and: failureCompletion)
+                return
+            }
+            
+            self.save(with: parentContext, completionHandler: completionHandler, failureCompletion: failureCompletion)
+        }
+    }
+    
+    private func handler(for type: CompletionHandlerType,
+                         using context: NSManagedObjectContext,
+                         with completionHandler: (() -> Void)?,
+                         and failureCompletion: ((DatabaseError) -> Void)?) {
+        if context.concurrencyType == .privateQueueConcurrencyType {
+            self.mainContext.perform {
+                switch type {
+                case .success:
+                    completionHandler?()
+                case .failure(let error):
+                    failureCompletion?(error)
+                }
+            }
+        } else {
+            switch type {
+            case .success:
+                completionHandler?()
+            case .failure(let error):
+                failureCompletion?(error)
             }
         }
     }
@@ -145,7 +185,9 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                 guard let entityDescription = NSEntityDescription.entity(forEntityName: String(describing: model.self),
                                                                          in: self.saveContext)
                 else {
-                    completion(.failure(.wrongModel))
+                    self.mainContext.perform {
+                        completion(.failure(.wrongModel))
+                    }
                     return
                 }
                 
@@ -156,18 +198,26 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             }
             
             guard let objects = entities as? [T] else {
-                completion(.failure(.wrongModel))
+                self.mainContext.perform {
+                    completion(.failure(.wrongModel))
+                }
                 return
             }
             
             guard self.saveContext.hasChanges else {
-                completion(.failure(.store(model: String(describing: model.self))))
+                self.mainContext.perform {
+                    completion(.failure(.store(model: String(describing: model.self))))
+                }
                 return
             }
             
-            self.save(with: self.saveContext) {
+            self.save(with: self.saveContext,
+                      completionHandler: {
                 completion(.success(objects))
-            }
+            },
+                      failureCompletion: { error in
+                completion(.failure(error))
+            })
         }
     }
     
@@ -178,27 +228,31 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             switch result {
             case .success(let fetchedObjects):
                 guard let fetchedObjects = fetchedObjects as? [NSManagedObject] else {
+                    completion(.failure(.wrongModel))
                     return
                 }
-
-                self.mainContext.perform {
+                
+                self.saveContext.perform {
                     fetchedObjects.forEach { fetchedObject in
                         fetchedObject.setValuesForKeys(keyedValues)
                     }
                     
                     let castFetchedObjects = fetchedObjects as? [T] ?? []
                     
-                    guard self.mainContext.hasChanges else {
-                        completion(.failure(.store(model: String(describing: model.self))))
+                    guard self.saveContext.hasChanges else {
+                        self.mainContext.perform {
+                            completion(.failure(.store(model: String(describing: model.self))))
+                        }
                         return
                     }
                     
-                    do {
-                        try self.mainContext.save()
+                    self.save(with: self.saveContext,
+                              completionHandler: {
                         completion(.success(castFetchedObjects))
-                    } catch let error {
-                        completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
-                    }
+                    },
+                              failureCompletion: { error in
+                        completion(.failure(error))
+                    })
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -217,23 +271,27 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     return
                 }
 
-                self.mainContext.perform {
+                self.saveContext.perform {
                     fetchedObjects.forEach { fetchedObject in
-                        self.mainContext.delete(fetchedObject)
+                        self.saveContext.delete(fetchedObject)
                     }
+                    
                     let deletedObjects = fetchedObjects as? [T] ?? []
                     
-                    guard self.mainContext.hasChanges else {
-                        completion(.failure(.store(model: String(describing: model.self))))
+                    guard self.saveContext.hasChanges else {
+                        self.mainContext.perform {
+                            completion(.failure(.store(model: String(describing: model.self))))
+                        }
                         return
                     }
                     
-                    do {
-                        try self.mainContext.save()
+                    self.save(with: self.saveContext,
+                              completionHandler: {
                         completion(.success(deletedObjects))
-                    } catch let error {
-                        completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
-                    }
+                    },
+                              failureCompletion: { error in
+                        completion(.failure(error))
+                    })
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -252,19 +310,21 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
         }
         
         self.saveContext.perform {
-            print("💧 \(Thread.current)")
             let request = model.fetchRequest()
             request.predicate = predicate
             guard
                 let fetchRequestResult = try? self.saveContext.fetch(request),
                 let fetchedObjects = fetchRequestResult as? [T]
             else {
-                self.mainQueue.async { completion(.failure(.wrongModel)) }
+                self.mainContext.perform {
+                    completion(.failure(.wrongModel))
+                }
                 return
             }
             
-            print("💧 💧 \(Thread.current)")
-            self.mainQueue.async { completion(.success(fetchedObjects)) }
+            self.mainContext.perform {
+                completion(.success(fetchedObjects))
+            }
         }
     }
     

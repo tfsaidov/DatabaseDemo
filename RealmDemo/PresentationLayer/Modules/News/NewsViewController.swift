@@ -456,6 +456,15 @@ final class NewsViewController: UIViewController {
                     print("🥭", models.first?.title)
                 case .failure(let error):
                     print("🥭 \(error.localizedDescription)")
+                    let repeatCompletion: (UIAlertAction) -> Void = { _ in
+                        self.didTapButton()
+                    }
+                    let alertController = UIAlertController.create(preferredStyle: .alert,
+                                                                   title: "Сouldn't update first article", message: "Please add first article in favorites",
+                                                                   hasAction: true, actionInfo: (title: "Repeat", style: .default),
+                                                                   hasCancel: true,
+                                                                   actionCompletionHandler: repeatCompletion)
+                    self.present(alertController, animated: true)
                 }
             }
         case .loading, .error:
