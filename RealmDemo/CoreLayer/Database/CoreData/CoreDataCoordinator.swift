@@ -122,6 +122,7 @@ final class CoreDataCoordinator {
         guard context.hasChanges else {
             self.handler(for: .failure(error: .error(desription: "Context has not changes")),
                          using: context,
+                         contextWorksInOwnQueue: false,
                          with: completionHandler,
                          and: failureCompletion)
             return
@@ -137,37 +138,44 @@ final class CoreDataCoordinator {
                              and: failureCompletion)
             }
             
-            guard let parentContext = context.parent else {
-                self.handler(for: .success,
-                             using: context,
-                             with: completionHandler,
-                             and: failureCompletion)
-                return
-            }
+            guard let parentContext = context.parent else { return }
             
+            self.handler(for: .success, using: context, with: completionHandler, and: failureCompletion)
             self.save(with: parentContext, completionHandler: completionHandler, failureCompletion: failureCompletion)
         }
     }
     
     private func handler(for type: CompletionHandlerType,
                          using context: NSManagedObjectContext,
+                         contextWorksInOwnQueue: Bool = true,
                          with completionHandler: (() -> Void)?,
                          and failureCompletion: ((DatabaseError) -> Void)?) {
-        if context.concurrencyType == .privateQueueConcurrencyType {
-            self.mainContext.perform {
-                switch type {
-                case .success:
+        switch type {
+        case .success:
+            if context.concurrencyType == .mainQueueConcurrencyType {
+                if contextWorksInOwnQueue {
                     completionHandler?()
-                case .failure(let error):
-                    failureCompletion?(error)
+                } else {
+                    self.mainContext.perform {
+                        completionHandler?()
+                    }
                 }
             }
-        } else {
-            switch type {
-            case .success:
-                completionHandler?()
-            case .failure(let error):
-                failureCompletion?(error)
+        case .failure(let error):
+            if context.concurrencyType == .privateQueueConcurrencyType {
+                if context.parent != nil {
+                    self.mainContext.perform {
+                        failureCompletion?(error)
+                    }
+                }
+            } else {
+                if contextWorksInOwnQueue {
+                    failureCompletion?(error)
+                } else {
+                    self.mainContext.perform {
+                        failureCompletion?(error)
+                    }
+                }
             }
         }
     }
@@ -204,13 +212,6 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                 return
             }
             
-            guard self.saveContext.hasChanges else {
-                self.mainContext.perform {
-                    completion(.failure(.store(model: String(describing: model.self))))
-                }
-                return
-            }
-            
             self.save(with: self.saveContext,
                       completionHandler: {
                 completion(.success(objects))
@@ -238,13 +239,6 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     }
                     
                     let castFetchedObjects = fetchedObjects as? [T] ?? []
-                    
-                    guard self.saveContext.hasChanges else {
-                        self.mainContext.perform {
-                            completion(.failure(.store(model: String(describing: model.self))))
-                        }
-                        return
-                    }
                     
                     self.save(with: self.saveContext,
                               completionHandler: {
@@ -277,13 +271,6 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     }
                     
                     let deletedObjects = fetchedObjects as? [T] ?? []
-                    
-                    guard self.saveContext.hasChanges else {
-                        self.mainContext.perform {
-                            completion(.failure(.store(model: String(describing: model.self))))
-                        }
-                        return
-                    }
                     
                     self.save(with: self.saveContext,
                               completionHandler: {

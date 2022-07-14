@@ -354,7 +354,7 @@ final class NewsViewController: UIViewController {
                                                                    description: filterArticle.description,
                                                                    publishedAt: filterArticle.publishedAt,
                                                                    url: filterArticle.url,
-                                                                   isFavorite: filterArticle.isFavorite)
+                                                                   isFavorite: !filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
                 let alertController = UIAlertController.create(preferredStyle: .alert,
@@ -398,7 +398,7 @@ final class NewsViewController: UIViewController {
                                                                    description: filterArticle.description,
                                                                    publishedAt: filterArticle.publishedAt,
                                                                    url: filterArticle.url,
-                                                                   isFavorite: filterArticle.isFavorite)
+                                                                   isFavorite: !filterArticle.isFavorite)
                     cell.change(with: viewModel)
                 }
                 let alertController = UIAlertController.create(preferredStyle: .alert,
