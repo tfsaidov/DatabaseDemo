@@ -243,7 +243,7 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             
             switch result {
             case .success(let fetchedObjects):
-                guard let fetchedObjects = fetchedObjects as? [NSManagedObject] else {
+                guard let fetchedObjects = fetchedObjects as? [NSManagedObject], !fetchedObjects.isEmpty else {
                     completion(.failure(.wrongModel))
                     return
                 }
@@ -275,7 +275,7 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             
             switch result {
             case .success(let fetchedObjects):
-                guard let fetchedObjects = fetchedObjects as? [NSManagedObject] else {
+                guard let fetchedObjects = fetchedObjects as? [NSManagedObject], !fetchedObjects.isEmpty else {
                     completion(.failure(.wrongModel))
                     return
                 }
@@ -314,6 +314,7 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
         self.saveContext.perform {
             let request = model.fetchRequest()
             request.predicate = predicate
+            
             guard
                 let fetchRequestResult = try? self.saveContext.fetch(request),
                 let fetchedObjects = fetchRequestResult as? [T]

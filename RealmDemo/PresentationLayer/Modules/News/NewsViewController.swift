@@ -99,6 +99,11 @@ final class NewsViewController: UIViewController {
     private func setupNavigationBar() {
         self.navigationController?.navigationBar.prefersLargeTitles = true
         self.navigationItem.title = "News"
+        
+        self.navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(barButtonSystemItem: .bookmarks, target: self, action: #selector(self.didTapBookmarksBarButtonItem)),
+            UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(self.didTapAddBarButtonItem))
+        ]
     }
     
     private func setupView() {
@@ -218,6 +223,7 @@ final class NewsViewController: UIViewController {
                 self.stopAnimating()
                 self.state = .loaded(data: obtainedArticles)
                 self.tableView.reloadData()
+                self.updateArticleButton.isEnabled = true
                 return
             }
             
@@ -469,6 +475,34 @@ final class NewsViewController: UIViewController {
             }
         case .loading, .error:
             break
+        }
+    }
+    
+    @objc private func didTapAddBarButtonItem() {
+        self.databaseCoordinator.deleteAll(UserCoreDataModel.self) { [weak self] _ in
+            guard let self = self else { return }
+            
+            if case AuthState.authorized(let user) = AuthStateObserver.shared.state {
+                self.databaseCoordinator.create(UserCoreDataModel.self, keyedValues: [user.keyedValues]) { result in
+                    switch result {
+                    case .success(let userCoreDataModels):
+                        print("🥥 \(dump(userCoreDataModels))")
+                    case .failure(let error):
+                        print("🥥 \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
+    @objc private func didTapBookmarksBarButtonItem() {
+        self.databaseCoordinator.fetchAll(UserCoreDataModel.self) { result in
+            switch result {
+            case .success(let userCoreDataModels):
+                print("🍅 \(dump(userCoreDataModels))")
+            case .failure(let error):
+                print("🍅 \(error)")
+            }
         }
     }
 }
