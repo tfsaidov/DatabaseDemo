@@ -132,10 +132,12 @@ final class CoreDataCoordinator {
             do {
                 try context.save()
             } catch let error {
-                self.handler(for: .failure(error: .error(desription: "Unable to save changes of context.\nError - \(error.localizedDescription)")),
-                             using: context,
-                             with: completionHandler,
-                             and: failureCompletion)
+                if context.parent != nil {
+                    self.handler(for: .failure(error: .error(desription: "Unable to save changes of context.\nError - \(error.localizedDescription)")),
+                                 using: context,
+                                 with: completionHandler,
+                                 and: failureCompletion)
+                }
             }
             
             guard let parentContext = context.parent else { return }
