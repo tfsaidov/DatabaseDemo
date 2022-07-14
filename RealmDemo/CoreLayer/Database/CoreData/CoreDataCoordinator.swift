@@ -119,6 +119,16 @@ final class CoreDataCoordinator {
     private func save(with context: NSManagedObjectContext,
                       completionHandler: (() -> Void)? = nil,
                       failureCompletion: ((DatabaseError) -> Void)? = nil) {
+        /*
+         if context === self.saveContext {
+             self.handler(for: .failure(error: .error(desription: "Something went wrong")),
+                          using: context,
+                          contextWorksInOwnQueue: false,
+                          with: completionHandler,
+                          and: failureCompletion)
+         }
+         */
+        
         // Нет обработки ошибки контекста, связанного с NSPersistentStoreCoordinator.
         guard context.hasChanges else {
             if context.parent != nil {
