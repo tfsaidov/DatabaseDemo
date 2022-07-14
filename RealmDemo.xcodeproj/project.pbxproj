@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3732B0AF28802D6A00B9B46F /* Date+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3732B0AE28802D6A00B9B46F /* Date+extension.swift */; };
 		3C66D85F287071A20061964F /* Realm in Frameworks */ = {isa = PBXBuildFile; productRef = 3C66D85E287071A20061964F /* Realm */; };
 		3C66D861287071A20061964F /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 3C66D860287071A20061964F /* RealmSwift */; };
 		3C66D865287076910061964F /* DatabaseDemo.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 3C66D863287076910061964F /* DatabaseDemo.xcdatamodeld */; };
@@ -43,6 +44,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3732B0AE28802D6A00B9B46F /* Date+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+extension.swift"; sourceTree = "<group>"; };
 		3C66D864287076910061964F /* DatabaseDemo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = DatabaseDemo.xcdatamodel; sourceTree = "<group>"; };
 		3C66D866287077550061964F /* CoreDataCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataCoordinator.swift; sourceTree = "<group>"; };
 		3C66D86A2870C4B30061964F /* MigrationStateObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationStateObserver.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 			children = (
 				3C66D8742870D4E20061964F /* UIAlertController+extension.swift */,
 				3CE36EAE284C084200FE0F3A /* String+extension.swift */,
+				3732B0AE28802D6A00B9B46F /* Date+extension.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -408,6 +411,7 @@
 				3C841CE928551E4800F7B303 /* FavoriteArticleTableViewCell.swift in Sources */,
 				3CD4FED82858E5DB0015B388 /* RealmCoordinator.swift in Sources */,
 				3C66D867287077550061964F /* CoreDataCoordinator.swift in Sources */,
+				3732B0AF28802D6A00B9B46F /* Date+extension.swift in Sources */,
 				3C66D865287076910061964F /* DatabaseDemo.xcdatamodeld in Sources */,
 				3CE36EA9284BD88200FE0F3A /* HTTPMethod.swift in Sources */,
 				3CE36E8F284BD54600FE0F3A /* AppDelegate.swift in Sources */,
