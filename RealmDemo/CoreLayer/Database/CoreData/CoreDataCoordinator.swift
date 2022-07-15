@@ -141,6 +141,12 @@ final class CoreDataCoordinator {
             return
         }
         
+        print("🫐 ------------")
+        print("🫐 SAVE saveContext", self.saveContext, self.saveContext.hasChanges, self.saveContext.registeredObjects, self.saveContext.insertedObjects, self.saveContext.updatedObjects, self.saveContext.deletedObjects)
+        print("🫐 SAVE mainContext", self.mainContext, self.mainContext.hasChanges, self.mainContext.registeredObjects, self.mainContext.insertedObjects, self.mainContext.updatedObjects, self.mainContext.deletedObjects)
+        print("🫐 SAVE masterContext", self.masterContext, self.masterContext.hasChanges, self.masterContext.registeredObjects, self.masterContext.insertedObjects, self.masterContext.updatedObjects, self.masterContext.deletedObjects)
+        print("🫐 ------------")
+        
         context.perform {
             do {
                 try context.save()
@@ -325,6 +331,12 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                 return
             }
             
+            print("🫐 ------------")
+            print("🫐 FETCH saveContext", self.saveContext, self.saveContext.hasChanges, self.saveContext.registeredObjects, self.saveContext.insertedObjects, self.saveContext.updatedObjects, self.saveContext.deletedObjects)
+            print("🫐 FETCH mainContext", self.mainContext, self.mainContext.hasChanges, self.mainContext.registeredObjects, self.mainContext.insertedObjects, self.mainContext.updatedObjects, self.mainContext.deletedObjects)
+            print("🫐 FETCH masterContext", self.masterContext, self.masterContext.hasChanges, self.masterContext.registeredObjects, self.masterContext.insertedObjects, self.masterContext.updatedObjects, self.masterContext.deletedObjects)
+            print("🫐 ------------")
+            
             self.mainContext.perform {
                 completion(.success(fetchedObjects))
             }
@@ -333,5 +345,44 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
     
     func fetchAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
         self.fetch(model, predicate: nil, completion: completion)
+    }
+    
+    /// Функционал двух несвязанных друг с другом контекстов. Оба контекста связаны с NSPersinstentStore.
+    /// - Parameters:
+    ///   - backgroundContext: Контекст, использующий фоновую очередью.
+    ///   - mainContext: Контекст, использующий главную очередью.
+    func foo(backgroundContext: NSManagedObjectContext, mainContext: NSManagedObjectContext) {
+        backgroundContext.perform {
+            let user = UserCoreDataModel(context: backgroundContext)
+            user.name = "Timur"
+            
+            mainContext.perform {
+                let usersObjectId = user.objectID
+                let object = mainContext.object(with: usersObjectId)
+                
+                if let newUser = object as? UserCoreDataModel {
+                    newUser.name = "Timur Saidov"
+                }
+                
+                do {
+                    try self.mainContext.save()
+                } catch {
+                    print("Save context error")
+                }
+                
+                let request = UserCoreDataModel.fetchRequest()
+                request.sortDescriptors = [
+                    NSSortDescriptor(key: "salary", ascending: true)
+                ]
+                let users = try? mainContext.fetch(request)
+                
+                backgroundContext.perform {
+                    let request = UserCoreDataModel.fetchRequest()
+                    request.fetchLimit = 20
+                    request.fetchOffset = 0
+                    let users = try? self.saveContext.fetch(request)
+                }
+            }
+        }
     }
 }

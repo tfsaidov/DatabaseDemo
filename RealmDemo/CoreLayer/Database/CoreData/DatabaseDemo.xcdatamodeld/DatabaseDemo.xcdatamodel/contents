@@ -11,13 +11,13 @@
         <attribute name="url" optional="YES" attributeType="String"/>
     </entity>
     <entity name="UserCoreDataModel" representedClassName="UserCoreDataModel" syncable="YES" codeGenerationType="class">
-        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="String" defaultValueString=""/>
         <attribute name="loginTime" attributeType="String" defaultValueString=""/>
-        <attribute name="name" optional="YES" attributeType="String" minValueString="2" maxValueString="15"/>
+        <attribute name="name" optional="YES" attributeType="String" minValueString="2" maxValueString="25"/>
         <attribute name="salary" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
     </entity>
     <elements>
         <element name="ArticleCoreDataModel" positionX="-63" positionY="-18" width="128" height="149"/>
-        <element name="UserCoreDataModel" positionX="-63" positionY="45" width="128" height="89"/>
+        <element name="UserCoreDataModel" positionX="216.8359375" positionY="267.484375" width="128" height="89"/>
     </elements>
 </model>

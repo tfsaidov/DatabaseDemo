@@ -17,7 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.checkRealmMigration()
         self.migrateStorageModels()
         AuthStateObserver.shared.state = .authorized(user: User(id: UUID().uuidString,
-                                                                name: "Timur Saidov",
+                                                                name: String.randomString(length: 20),
                                                                 loginTime: Date().toString(),
                                                                 salary: 123123.123))
         return true

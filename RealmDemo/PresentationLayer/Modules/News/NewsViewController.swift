@@ -44,7 +44,7 @@ final class NewsViewController: UIViewController {
         button.backgroundColor = .systemBlue
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
-        button.addTarget(self, action: #selector(self.didTapButton), for: .touchUpInside)
+        button.addTarget(self, action: #selector(self.didTapUpdateFirstArticleButton), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -338,8 +338,8 @@ final class NewsViewController: UIViewController {
             guard let self = self else { return }
             
             switch result {
-            case .success(let article):
-//                print("🍋 \(article.title) \(article.isFavorite)")
+            case .success(let articleCoreDataModels):
+//                print("🍋 \(dump(articleCoreDataModels))")
                 var newData = data
                 newData[index] = filterArticle
                 self.state = .loaded(data: newData)
@@ -382,8 +382,8 @@ final class NewsViewController: UIViewController {
             guard let self = self else { return }
             
             switch result {
-            case .success(let articles):
-//                print("🍊 \(articles)")
+            case .success(let articleCoreDataModels):
+//                print("🍊 \(dump(articleCoreDataModels))")
                 var newData = data
                 newData[index] = filterArticle
                 self.state = .loaded(data: newData)
@@ -448,7 +448,7 @@ final class NewsViewController: UIViewController {
         }
     }
     
-    @objc private func didTapButton() {
+    @objc private func didTapUpdateFirstArticleButton() {
         switch self.state {
         case .loaded(let data):
             // Изменение заголовка первой статьи из списка статей при условии, что она добавлена в Избранное.
@@ -456,14 +456,16 @@ final class NewsViewController: UIViewController {
             
             let predicate = NSPredicate(format: "url == %@", article.url)
             let keyedValues: [String: Any] = ["title": String.randomString()]
-            self.databaseCoordinator.update(ArticleCoreDataModel.self, predicate: predicate, keyedValues: keyedValues) { result in
+            self.databaseCoordinator.update(ArticleCoreDataModel.self, predicate: predicate, keyedValues: keyedValues) { [weak self] result in
+                guard let self = self else { return }
+                
                 switch result {
                 case .success(let models):
                     print("🥭", models.first?.title)
                 case .failure(let error):
                     print("🥭 \(error.localizedDescription)")
                     let repeatCompletion: (UIAlertAction) -> Void = { _ in
-                        self.didTapButton()
+                        self.didTapUpdateFirstArticleButton()
                     }
                     let alertController = UIAlertController.create(preferredStyle: .alert,
                                                                    title: "Сouldn't update first article", message: "Please add first article in favorites",
