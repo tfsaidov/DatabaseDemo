@@ -261,41 +261,42 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
     }
     
     /// Функционал двух несвязанных друг с другом контекстов. Оба контекста связаны с NSPersinstentStore.
-    /// - Parameters:
-    ///   - backgroundContext: Контекст, использующий фоновую очередью.
-    ///   - mainContext: Контекст, использующий главную очередью.
-//    func foo(backgroundContext: NSManagedObjectContext, mainContext: NSManagedObjectContext) {
-//        backgroundContext.perform {
-//            let user = UserCoreDataModel(context: backgroundContext)
-//            user.name = "Timur"
+    func foo() {
+        self.fetch(ArticleCoreDataModel.self, predicate: nil) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let fetchedObjects):
+                self.mainContext.perform {
+                    let objectsIds = fetchedObjects.map { $0.objectID }
+                    let objects = objectsIds.map { self.mainContext.object(with: $0) } as? [ArticleCoreDataModel] ?? []
+                    
+                    objects.enumerated().forEach { index, object in
+                        object.title = "Favorite index \(index)"
+                    }
+                    
+                    guard self.mainContext.hasChanges else {
+                        fatalError()
+                    }
+                    
+                    do {
+                        try self.mainContext.save()
+                    } catch {
+                        fatalError()
+                    }
+                }
+            case .failure:
+                fatalError()
+            }
+        }
+    }
+    
+    /// Второй способ синхронизации данных между контекстами.
+//        NotificationCenter.default.addObserver(self, selector: #selector(managedObjectContextDidSave), name: NSNotification.Name.NSManagedObjectContextDidSave, object: nil)
 //
-//            mainContext.perform {
-//                let usersObjectId = user.objectID
-//                let object = mainContext.object(with: usersObjectId)
-//
-//                if let newUser = object as? UserCoreDataModel {
-//                    newUser.name = "Timur Saidov"
-//                }
-//
-//                do {
-//                    try self.mainContext.save()
-//                } catch {
-//                    print("Save context error")
-//                }
-//
-//                let request = UserCoreDataModel.fetchRequest()
-//                request.sortDescriptors = [
-//                    NSSortDescriptor(key: "salary", ascending: true)
-//                ]
-//                let users = try? mainContext.fetch(request)
-//
-//                backgroundContext.perform {
-//                    let request = UserCoreDataModel.fetchRequest()
-//                    request.fetchLimit = 20
-//                    request.fetchOffset = 0
-//                    let users = try? self.saveContext.fetch(request)
-//                }
+//        @objc private func managedObjectContextDidSave(notification: Notification) {
+//            self.mainContext.perform {
+//                self.mainContext.mergeChanges(fromContextDidSave: notification)
 //            }
 //        }
-//    }
 }
