@@ -346,43 +346,4 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
     func fetchAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
         self.fetch(model, predicate: nil, completion: completion)
     }
-    
-    /// Функционал двух несвязанных друг с другом контекстов. Оба контекста связаны с NSPersinstentStore.
-    /// - Parameters:
-    ///   - backgroundContext: Контекст, использующий фоновую очередью.
-    ///   - mainContext: Контекст, использующий главную очередью.
-    func foo(backgroundContext: NSManagedObjectContext, mainContext: NSManagedObjectContext) {
-        backgroundContext.perform {
-            let user = UserCoreDataModel(context: backgroundContext)
-            user.name = "Timur"
-            
-            mainContext.perform {
-                let usersObjectId = user.objectID
-                let object = mainContext.object(with: usersObjectId)
-                
-                if let newUser = object as? UserCoreDataModel {
-                    newUser.name = "Timur Saidov"
-                }
-                
-                do {
-                    try self.mainContext.save()
-                } catch {
-                    print("Save context error")
-                }
-                
-                let request = UserCoreDataModel.fetchRequest()
-                request.sortDescriptors = [
-                    NSSortDescriptor(key: "salary", ascending: true)
-                ]
-                let users = try? mainContext.fetch(request)
-                
-                backgroundContext.perform {
-                    let request = UserCoreDataModel.fetchRequest()
-                    request.fetchLimit = 20
-                    request.fetchOffset = 0
-                    let users = try? self.saveContext.fetch(request)
-                }
-            }
-        }
-    }
 }
