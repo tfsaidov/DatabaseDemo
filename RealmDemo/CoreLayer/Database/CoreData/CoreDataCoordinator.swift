@@ -14,6 +14,13 @@ final class CoreDataCoordinator {
 
     private let model: NSManagedObjectModel
     private let persistentStoreCoordinator: NSPersistentStoreCoordinator
+    
+    private lazy var backgroundContext: NSManagedObjectContext = {
+        let backgroundContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        backgroundContext.mergePolicy = NSOverwriteMergePolicy
+        backgroundContext.persistentStoreCoordinator = self.persistentStoreCoordinator
+        return backgroundContext
+    }()
 
     private lazy var mainContext: NSManagedObjectContext = {
         let mainContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
@@ -98,21 +105,21 @@ final class CoreDataCoordinator {
 extension CoreDataCoordinator: DatabaseCoordinatable {
     
     func create<T>(_ model: T.Type, keyedValues: [[String : Any]], completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
-        self.mainContext.perform { [weak self] in
+        self.backgroundContext.perform { [weak self] in
             guard let self = self else { return }
             
             var entities: [Any] = Array(repeating: true, count: keyedValues.count)
             
             keyedValues.enumerated().forEach { (index, keyedValues) in
                 guard let entityDescription = NSEntityDescription.entity(forEntityName: String(describing: model.self),
-                                                                         in: self.mainContext)
+                                                                         in: self.backgroundContext)
                 else {
                     completion(.failure(.wrongModel))
                     return
                 }
                 
                 let entity = NSManagedObject(entity: entityDescription,
-                                             insertInto: self.mainContext)
+                                             insertInto: self.backgroundContext)
                 entity.setValuesForKeys(keyedValues)
                 entities[index] = entity
             }
@@ -122,14 +129,17 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                 return
             }
             
-            guard self.mainContext.hasChanges else {
+            guard self.backgroundContext.hasChanges else {
                 completion(.failure(.store(model: String(describing: model.self))))
                 return
             }
             
             do {
-                try self.mainContext.save()
-                completion(.success(objects))
+                try self.backgroundContext.save()
+                
+                self.mainContext.perform {
+                    completion(.success(objects))
+                }
             } catch let error {
                 completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
             }
@@ -143,26 +153,32 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             switch result {
             case .success(let fetchedObjects):
                 guard let fetchedObjects = fetchedObjects as? [NSManagedObject] else {
+                    completion(.failure(.wrongModel))
                     return
                 }
 
-                self.mainContext.perform {
+                self.backgroundContext.perform {
                     fetchedObjects.forEach { fetchedObject in
                         fetchedObject.setValuesForKeys(keyedValues)
                     }
                     
                     let castFetchedObjects = fetchedObjects as? [T] ?? []
                     
-                    guard self.mainContext.hasChanges else {
+                    guard self.backgroundContext.hasChanges else {
                         completion(.failure(.store(model: String(describing: model.self))))
                         return
                     }
                     
                     do {
-                        try self.mainContext.save()
-                        completion(.success(castFetchedObjects))
+                        try self.backgroundContext.save()
+                        
+                        self.mainContext.perform {
+                            completion(.success(castFetchedObjects))
+                        }
                     } catch let error {
+                        self.mainContext.perform {
                         completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                        }
                     }
                 }
             case .failure(let error):
@@ -182,22 +198,27 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
                     return
                 }
 
-                self.mainContext.perform {
+                self.backgroundContext.perform {
                     fetchedObjects.forEach { fetchedObject in
-                        self.mainContext.delete(fetchedObject)
+                        self.backgroundContext.delete(fetchedObject)
                     }
                     let deletedObjects = fetchedObjects as? [T] ?? []
                     
-                    guard self.mainContext.hasChanges else {
+                    guard self.backgroundContext.hasChanges else {
                         completion(.failure(.store(model: String(describing: model.self))))
                         return
                     }
                     
                     do {
-                        try self.mainContext.save()
-                        completion(.success(deletedObjects))
+                        try self.backgroundContext.save()
+                        
+                        self.mainContext.perform {
+                            completion(.success(deletedObjects))
+                        }
                     } catch let error {
-                        completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                        self.mainContext.perform {
+                            completion(.failure(.error(desription: "Unable to save changes of main context.\nError - \(error.localizedDescription)")))
+                        }
                     }
                 }
             case .failure(let error):
@@ -216,22 +237,65 @@ extension CoreDataCoordinator: DatabaseCoordinatable {
             return
         }
         
-        self.mainContext.perform {
+        self.backgroundContext.perform {
             let request = model.fetchRequest()
             request.predicate = predicate
             guard
-                let fetchRequestResult = try? self.mainContext.fetch(request),
+                let fetchRequestResult = try? self.backgroundContext.fetch(request),
                 let fetchedObjects = fetchRequestResult as? [T]
             else {
-                completion(.failure(.wrongModel))
+                self.mainContext.perform {
+                    completion(.failure(.wrongModel))
+                }
                 return
             }
             
-            completion(.success(fetchedObjects))
+            self.mainContext.perform {
+                completion(.success(fetchedObjects))
+            }
         }
     }
     
     func fetchAll<T>(_ model: T.Type, completion: @escaping (Result<[T], DatabaseError>) -> Void) where T : Storable {
         self.fetch(model, predicate: nil, completion: completion)
     }
+    
+    /// Функционал двух несвязанных друг с другом контекстов. Оба контекста связаны с NSPersinstentStore.
+    /// - Parameters:
+    ///   - backgroundContext: Контекст, использующий фоновую очередью.
+    ///   - mainContext: Контекст, использующий главную очередью.
+//    func foo(backgroundContext: NSManagedObjectContext, mainContext: NSManagedObjectContext) {
+//        backgroundContext.perform {
+//            let user = UserCoreDataModel(context: backgroundContext)
+//            user.name = "Timur"
+//
+//            mainContext.perform {
+//                let usersObjectId = user.objectID
+//                let object = mainContext.object(with: usersObjectId)
+//
+//                if let newUser = object as? UserCoreDataModel {
+//                    newUser.name = "Timur Saidov"
+//                }
+//
+//                do {
+//                    try self.mainContext.save()
+//                } catch {
+//                    print("Save context error")
+//                }
+//
+//                let request = UserCoreDataModel.fetchRequest()
+//                request.sortDescriptors = [
+//                    NSSortDescriptor(key: "salary", ascending: true)
+//                ]
+//                let users = try? mainContext.fetch(request)
+//
+//                backgroundContext.perform {
+//                    let request = UserCoreDataModel.fetchRequest()
+//                    request.fetchLimit = 20
+//                    request.fetchOffset = 0
+//                    let users = try? self.saveContext.fetch(request)
+//                }
+//            }
+//        }
+//    }
 }
